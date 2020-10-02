@@ -1,0 +1,28 @@
+import click, os, sys
+from pydotenvs.main import load_env_cli, load_env, load_env_object
+from pydotenvs.version import __version__
+
+
+@click.command('pydotenvs')
+@click.option('-f', '--envpath', required=1, default=os.path.join(os.getcwd(), '.env'), type=click.Path(exists=True), help='Location of .env file, defaults to .env in current working directory')
+@click.option('-c', '--command', type=click.STRING, help='Run a command that requires local enviornment variables for one instance')
+@click.option('-l', '--loadobj', default=False, type=click.BOOL, help='Load .env file as object instead of environment variable')
+@click.option('-s', '--stringio', default=False, type=click.BOOL, help='Load .env file as StringIO object instead of environment variable')
+@click.option('-v', '--verbose', default=False, type=click.BOOL, help='Verbose')
+@click.version_option(version=__version__)
+def pyenv(envpath, command, loadobj, stringio, verbose):
+	if stringio:
+		stringObj = load_env(env_path=envpath, stringIO=stringio, auto_close=True, verbose=verbose)  # without auto close, you're resposible for closing StringIO object
+		click.echo(stringObj.getvalue())
+		sys.exit()
+	if loadobj:
+		envDict = load_env_object(env_path=envpath, verbose=verbose)
+		click.echo(envDict)
+		sys.exit()
+
+	# if neither above are true do as normal
+	load_env_cli(env_path=envpath, command=command, verbose=verbose)
+
+
+if __name__ == '__main__':
+	pyenv()
