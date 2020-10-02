@@ -1,0 +1,841 @@
+import abc
+import builtins
+import datetime
+import enum
+import typing
+
+import jsii
+import publication
+import typing_extensions
+
+from .._jsii import *
+
+from .. import Construct as _Construct_f50a3f53, Duration as _Duration_5170c158
+from ..aws_codeguruprofiler import IProfilingGroup as _IProfilingGroup_ca898ddc
+from ..aws_ec2 import (
+    ISecurityGroup as _ISecurityGroup_d72ab8e8,
+    IVpc as _IVpc_3795853f,
+    SubnetSelection as _SubnetSelection_36a13cd6,
+)
+from ..aws_iam import (
+    IRole as _IRole_e69bbae4, PolicyStatement as _PolicyStatement_f75dc775
+)
+from ..aws_lambda import (
+    FileSystem as _FileSystem_132c0ce7,
+    Function as _Function_c537766c,
+    FunctionOptions as _FunctionOptions_83fb7178,
+    IDestination as _IDestination_7081f282,
+    IEventSource as _IEventSource_0e6bcb85,
+    ILayerVersion as _ILayerVersion_aa5e0c0c,
+    LogRetentionRetryOptions as _LogRetentionRetryOptions_09658088,
+    Runtime as _Runtime_8b970b80,
+    Tracing as _Tracing_34f0a955,
+    VersionOptions as _VersionOptions_9a55a63d,
+)
+from ..aws_logs import RetentionDays as _RetentionDays_bdc7ad1f
+from ..aws_sqs import IQueue as _IQueue_b743f559
+
+
+class PythonFunction(
+    _Function_c537766c,
+    metaclass=jsii.JSIIMeta,
+    jsii_type="monocdk-experiment.aws_lambda_python.PythonFunction",
+):
+    """(experimental) A Python Lambda function.
+
+    :stability: experimental
+    """
+
+    def __init__(
+        self,
+        scope: _Construct_f50a3f53,
+        id: builtins.str,
+        *,
+        entry: builtins.str,
+        handler: typing.Optional[builtins.str] = None,
+        index: typing.Optional[builtins.str] = None,
+        runtime: typing.Optional[_Runtime_8b970b80] = None,
+        allow_all_outbound: typing.Optional[builtins.bool] = None,
+        allow_public_subnet: typing.Optional[builtins.bool] = None,
+        current_version_options: typing.Optional[_VersionOptions_9a55a63d] = None,
+        dead_letter_queue: typing.Optional[_IQueue_b743f559] = None,
+        dead_letter_queue_enabled: typing.Optional[builtins.bool] = None,
+        description: typing.Optional[builtins.str] = None,
+        environment: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None,
+        events: typing.Optional[typing.List[_IEventSource_0e6bcb85]] = None,
+        filesystem: typing.Optional[_FileSystem_132c0ce7] = None,
+        function_name: typing.Optional[builtins.str] = None,
+        initial_policy: typing.Optional[typing.List[_PolicyStatement_f75dc775]] = None,
+        layers: typing.Optional[typing.List[_ILayerVersion_aa5e0c0c]] = None,
+        log_retention: typing.Optional[_RetentionDays_bdc7ad1f] = None,
+        log_retention_retry_options: typing.Optional[_LogRetentionRetryOptions_09658088] = None,
+        log_retention_role: typing.Optional[_IRole_e69bbae4] = None,
+        memory_size: typing.Optional[jsii.Number] = None,
+        profiling: typing.Optional[builtins.bool] = None,
+        profiling_group: typing.Optional[_IProfilingGroup_ca898ddc] = None,
+        reserved_concurrent_executions: typing.Optional[jsii.Number] = None,
+        role: typing.Optional[_IRole_e69bbae4] = None,
+        security_group: typing.Optional[_ISecurityGroup_d72ab8e8] = None,
+        security_groups: typing.Optional[typing.List[_ISecurityGroup_d72ab8e8]] = None,
+        timeout: typing.Optional[_Duration_5170c158] = None,
+        tracing: typing.Optional[_Tracing_34f0a955] = None,
+        vpc: typing.Optional[_IVpc_3795853f] = None,
+        vpc_subnets: typing.Optional[_SubnetSelection_36a13cd6] = None,
+        max_event_age: typing.Optional[_Duration_5170c158] = None,
+        on_failure: typing.Optional[_IDestination_7081f282] = None,
+        on_success: typing.Optional[_IDestination_7081f282] = None,
+        retry_attempts: typing.Optional[jsii.Number] = None,
+    ) -> None:
+        """
+        :param scope: -
+        :param id: -
+        :param entry: (experimental) The path to the root directory of the function.
+        :param handler: (experimental) The name of the exported handler in the index file. Default: handler
+        :param index: (experimental) The path (relative to entry) to the index file containing the exported handler. Default: index.py
+        :param runtime: (experimental) The runtime environment. Only runtimes of the Python family are supported. Default: lambda.Runtime.PYTHON_3_7
+        :param allow_all_outbound: (experimental) Whether to allow the Lambda to send all network traffic. If set to false, you must individually add traffic rules to allow the Lambda to connect to network targets. Default: true
+        :param allow_public_subnet: (experimental) Lambda Functions in a public subnet can NOT access the internet. Use this property to acknowledge this limitation and still place the function in a public subnet. Default: false
+        :param current_version_options: (experimental) Options for the ``lambda.Version`` resource automatically created by the ``fn.currentVersion`` method. Default: - default options as described in ``VersionOptions``
+        :param dead_letter_queue: (experimental) The SQS queue to use if DLQ is enabled. Default: - SQS queue with 14 day retention period if ``deadLetterQueueEnabled`` is ``true``
+        :param dead_letter_queue_enabled: (experimental) Enabled DLQ. If ``deadLetterQueue`` is undefined, an SQS queue with default options will be defined for your Function. Default: - false unless ``deadLetterQueue`` is set, which implies DLQ is enabled.
+        :param description: (experimental) A description of the function. Default: - No description.
+        :param environment: (experimental) Key-value pairs that Lambda caches and makes available for your Lambda functions. Use environment variables to apply configuration changes, such as test and production environment configurations, without changing your Lambda function source code. Default: - No environment variables.
+        :param events: (experimental) Event sources for this function. You can also add event sources using ``addEventSource``. Default: - No event sources.
+        :param filesystem: (experimental) The filesystem configuration for the lambda function. Default: - will not mount any filesystem
+        :param function_name: (experimental) A name for the function. Default: - AWS CloudFormation generates a unique physical ID and uses that ID for the function's name. For more information, see Name Type.
+        :param initial_policy: (experimental) Initial policy statements to add to the created Lambda Role. You can call ``addToRolePolicy`` to the created lambda to add statements post creation. Default: - No policy statements are added to the created Lambda role.
+        :param layers: (experimental) A list of layers to add to the function's execution environment. You can configure your Lambda function to pull in additional code during initialization in the form of layers. Layers are packages of libraries or other dependencies that can be used by mulitple functions. Default: - No layers.
+        :param log_retention: (experimental) The number of days log events are kept in CloudWatch Logs. When updating this property, unsetting it doesn't remove the log retention policy. To remove the retention policy, set the value to ``INFINITE``. Default: logs.RetentionDays.INFINITE
+        :param log_retention_retry_options: (experimental) When log retention is specified, a custom resource attempts to create the CloudWatch log group. These options control the retry policy when interacting with CloudWatch APIs. Default: - Default AWS SDK retry options.
+        :param log_retention_role: (experimental) The IAM role for the Lambda function associated with the custom resource that sets the retention policy. Default: - A new role is created.
+        :param memory_size: (experimental) The amount of memory, in MB, that is allocated to your Lambda function. Lambda uses this value to proportionally allocate the amount of CPU power. For more information, see Resource Model in the AWS Lambda Developer Guide. Default: 128
+        :param profiling: (experimental) Enable profiling. Default: - No profiling.
+        :param profiling_group: (experimental) Profiling Group. Default: - A new profiling group will be created if ``profiling`` is set.
+        :param reserved_concurrent_executions: (experimental) The maximum of concurrent executions you want to reserve for the function. Default: - No specific limit - account limit.
+        :param role: (experimental) Lambda execution role. This is the role that will be assumed by the function upon execution. It controls the permissions that the function will have. The Role must be assumable by the 'lambda.amazonaws.com' service principal. The default Role automatically has permissions granted for Lambda execution. If you provide a Role, you must add the relevant AWS managed policies yourself. The relevant managed policies are "service-role/AWSLambdaBasicExecutionRole" and "service-role/AWSLambdaVPCAccessExecutionRole". Default: - A unique role will be generated for this lambda function. Both supplied and generated roles can always be changed by calling ``addToRolePolicy``.
+        :param security_group: (deprecated) What security group to associate with the Lambda's network interfaces. This property is being deprecated, consider using securityGroups instead. Only used if 'vpc' is supplied. Use securityGroups property instead. Function constructor will throw an error if both are specified. Default: - If the function is placed within a VPC and a security group is not specified, either by this or securityGroups prop, a dedicated security group will be created for this function.
+        :param security_groups: (experimental) The list of security groups to associate with the Lambda's network interfaces. Only used if 'vpc' is supplied. Default: - If the function is placed within a VPC and a security group is not specified, either by this or securityGroup prop, a dedicated security group will be created for this function.
+        :param timeout: (experimental) The function execution time (in seconds) after which Lambda terminates the function. Because the execution time affects cost, set this value based on the function's expected execution time. Default: Duration.seconds(3)
+        :param tracing: (experimental) Enable AWS X-Ray Tracing for Lambda Function. Default: Tracing.Disabled
+        :param vpc: (experimental) VPC network to place Lambda network interfaces. Specify this if the Lambda function needs to access resources in a VPC. Default: - Function is not placed within a VPC.
+        :param vpc_subnets: (experimental) Where to place the network interfaces within the VPC. Only used if 'vpc' is supplied. Note: internet access for Lambdas requires a NAT gateway, so picking Public subnets is not allowed. Default: - the Vpc default strategy if not specified
+        :param max_event_age: (experimental) The maximum age of a request that Lambda sends to a function for processing. Minimum: 60 seconds Maximum: 6 hours Default: Duration.hours(6)
+        :param on_failure: (experimental) The destination for failed invocations. Default: - no destination
+        :param on_success: (experimental) The destination for successful invocations. Default: - no destination
+        :param retry_attempts: (experimental) The maximum number of times to retry when the function returns an error. Minimum: 0 Maximum: 2 Default: 2
+
+        :stability: experimental
+        """
+        props = PythonFunctionProps(
+            entry=entry,
+            handler=handler,
+            index=index,
+            runtime=runtime,
+            allow_all_outbound=allow_all_outbound,
+            allow_public_subnet=allow_public_subnet,
+            current_version_options=current_version_options,
+            dead_letter_queue=dead_letter_queue,
+            dead_letter_queue_enabled=dead_letter_queue_enabled,
+            description=description,
+            environment=environment,
+            events=events,
+            filesystem=filesystem,
+            function_name=function_name,
+            initial_policy=initial_policy,
+            layers=layers,
+            log_retention=log_retention,
+            log_retention_retry_options=log_retention_retry_options,
+            log_retention_role=log_retention_role,
+            memory_size=memory_size,
+            profiling=profiling,
+            profiling_group=profiling_group,
+            reserved_concurrent_executions=reserved_concurrent_executions,
+            role=role,
+            security_group=security_group,
+            security_groups=security_groups,
+            timeout=timeout,
+            tracing=tracing,
+            vpc=vpc,
+            vpc_subnets=vpc_subnets,
+            max_event_age=max_event_age,
+            on_failure=on_failure,
+            on_success=on_success,
+            retry_attempts=retry_attempts,
+        )
+
+        jsii.create(PythonFunction, self, [scope, id, props])
+
+
+@jsii.data_type(
+    jsii_type="monocdk-experiment.aws_lambda_python.PythonFunctionProps",
+    jsii_struct_bases=[_FunctionOptions_83fb7178],
+    name_mapping={
+        "max_event_age": "maxEventAge",
+        "on_failure": "onFailure",
+        "on_success": "onSuccess",
+        "retry_attempts": "retryAttempts",
+        "allow_all_outbound": "allowAllOutbound",
+        "allow_public_subnet": "allowPublicSubnet",
+        "current_version_options": "currentVersionOptions",
+        "dead_letter_queue": "deadLetterQueue",
+        "dead_letter_queue_enabled": "deadLetterQueueEnabled",
+        "description": "description",
+        "environment": "environment",
+        "events": "events",
+        "filesystem": "filesystem",
+        "function_name": "functionName",
+        "initial_policy": "initialPolicy",
+        "layers": "layers",
+        "log_retention": "logRetention",
+        "log_retention_retry_options": "logRetentionRetryOptions",
+        "log_retention_role": "logRetentionRole",
+        "memory_size": "memorySize",
+        "profiling": "profiling",
+        "profiling_group": "profilingGroup",
+        "reserved_concurrent_executions": "reservedConcurrentExecutions",
+        "role": "role",
+        "security_group": "securityGroup",
+        "security_groups": "securityGroups",
+        "timeout": "timeout",
+        "tracing": "tracing",
+        "vpc": "vpc",
+        "vpc_subnets": "vpcSubnets",
+        "entry": "entry",
+        "handler": "handler",
+        "index": "index",
+        "runtime": "runtime",
+    },
+)
+class PythonFunctionProps(_FunctionOptions_83fb7178):
+    def __init__(
+        self,
+        *,
+        max_event_age: typing.Optional[_Duration_5170c158] = None,
+        on_failure: typing.Optional[_IDestination_7081f282] = None,
+        on_success: typing.Optional[_IDestination_7081f282] = None,
+        retry_attempts: typing.Optional[jsii.Number] = None,
+        allow_all_outbound: typing.Optional[builtins.bool] = None,
+        allow_public_subnet: typing.Optional[builtins.bool] = None,
+        current_version_options: typing.Optional[_VersionOptions_9a55a63d] = None,
+        dead_letter_queue: typing.Optional[_IQueue_b743f559] = None,
+        dead_letter_queue_enabled: typing.Optional[builtins.bool] = None,
+        description: typing.Optional[builtins.str] = None,
+        environment: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None,
+        events: typing.Optional[typing.List[_IEventSource_0e6bcb85]] = None,
+        filesystem: typing.Optional[_FileSystem_132c0ce7] = None,
+        function_name: typing.Optional[builtins.str] = None,
+        initial_policy: typing.Optional[typing.List[_PolicyStatement_f75dc775]] = None,
+        layers: typing.Optional[typing.List[_ILayerVersion_aa5e0c0c]] = None,
+        log_retention: typing.Optional[_RetentionDays_bdc7ad1f] = None,
+        log_retention_retry_options: typing.Optional[_LogRetentionRetryOptions_09658088] = None,
+        log_retention_role: typing.Optional[_IRole_e69bbae4] = None,
+        memory_size: typing.Optional[jsii.Number] = None,
+        profiling: typing.Optional[builtins.bool] = None,
+        profiling_group: typing.Optional[_IProfilingGroup_ca898ddc] = None,
+        reserved_concurrent_executions: typing.Optional[jsii.Number] = None,
+        role: typing.Optional[_IRole_e69bbae4] = None,
+        security_group: typing.Optional[_ISecurityGroup_d72ab8e8] = None,
+        security_groups: typing.Optional[typing.List[_ISecurityGroup_d72ab8e8]] = None,
+        timeout: typing.Optional[_Duration_5170c158] = None,
+        tracing: typing.Optional[_Tracing_34f0a955] = None,
+        vpc: typing.Optional[_IVpc_3795853f] = None,
+        vpc_subnets: typing.Optional[_SubnetSelection_36a13cd6] = None,
+        entry: builtins.str,
+        handler: typing.Optional[builtins.str] = None,
+        index: typing.Optional[builtins.str] = None,
+        runtime: typing.Optional[_Runtime_8b970b80] = None,
+    ) -> None:
+        """(experimental) Properties for a PythonFunction.
+
+        :param max_event_age: (experimental) The maximum age of a request that Lambda sends to a function for processing. Minimum: 60 seconds Maximum: 6 hours Default: Duration.hours(6)
+        :param on_failure: (experimental) The destination for failed invocations. Default: - no destination
+        :param on_success: (experimental) The destination for successful invocations. Default: - no destination
+        :param retry_attempts: (experimental) The maximum number of times to retry when the function returns an error. Minimum: 0 Maximum: 2 Default: 2
+        :param allow_all_outbound: (experimental) Whether to allow the Lambda to send all network traffic. If set to false, you must individually add traffic rules to allow the Lambda to connect to network targets. Default: true
+        :param allow_public_subnet: (experimental) Lambda Functions in a public subnet can NOT access the internet. Use this property to acknowledge this limitation and still place the function in a public subnet. Default: false
+        :param current_version_options: (experimental) Options for the ``lambda.Version`` resource automatically created by the ``fn.currentVersion`` method. Default: - default options as described in ``VersionOptions``
+        :param dead_letter_queue: (experimental) The SQS queue to use if DLQ is enabled. Default: - SQS queue with 14 day retention period if ``deadLetterQueueEnabled`` is ``true``
+        :param dead_letter_queue_enabled: (experimental) Enabled DLQ. If ``deadLetterQueue`` is undefined, an SQS queue with default options will be defined for your Function. Default: - false unless ``deadLetterQueue`` is set, which implies DLQ is enabled.
+        :param description: (experimental) A description of the function. Default: - No description.
+        :param environment: (experimental) Key-value pairs that Lambda caches and makes available for your Lambda functions. Use environment variables to apply configuration changes, such as test and production environment configurations, without changing your Lambda function source code. Default: - No environment variables.
+        :param events: (experimental) Event sources for this function. You can also add event sources using ``addEventSource``. Default: - No event sources.
+        :param filesystem: (experimental) The filesystem configuration for the lambda function. Default: - will not mount any filesystem
+        :param function_name: (experimental) A name for the function. Default: - AWS CloudFormation generates a unique physical ID and uses that ID for the function's name. For more information, see Name Type.
+        :param initial_policy: (experimental) Initial policy statements to add to the created Lambda Role. You can call ``addToRolePolicy`` to the created lambda to add statements post creation. Default: - No policy statements are added to the created Lambda role.
+        :param layers: (experimental) A list of layers to add to the function's execution environment. You can configure your Lambda function to pull in additional code during initialization in the form of layers. Layers are packages of libraries or other dependencies that can be used by mulitple functions. Default: - No layers.
+        :param log_retention: (experimental) The number of days log events are kept in CloudWatch Logs. When updating this property, unsetting it doesn't remove the log retention policy. To remove the retention policy, set the value to ``INFINITE``. Default: logs.RetentionDays.INFINITE
+        :param log_retention_retry_options: (experimental) When log retention is specified, a custom resource attempts to create the CloudWatch log group. These options control the retry policy when interacting with CloudWatch APIs. Default: - Default AWS SDK retry options.
+        :param log_retention_role: (experimental) The IAM role for the Lambda function associated with the custom resource that sets the retention policy. Default: - A new role is created.
+        :param memory_size: (experimental) The amount of memory, in MB, that is allocated to your Lambda function. Lambda uses this value to proportionally allocate the amount of CPU power. For more information, see Resource Model in the AWS Lambda Developer Guide. Default: 128
+        :param profiling: (experimental) Enable profiling. Default: - No profiling.
+        :param profiling_group: (experimental) Profiling Group. Default: - A new profiling group will be created if ``profiling`` is set.
+        :param reserved_concurrent_executions: (experimental) The maximum of concurrent executions you want to reserve for the function. Default: - No specific limit - account limit.
+        :param role: (experimental) Lambda execution role. This is the role that will be assumed by the function upon execution. It controls the permissions that the function will have. The Role must be assumable by the 'lambda.amazonaws.com' service principal. The default Role automatically has permissions granted for Lambda execution. If you provide a Role, you must add the relevant AWS managed policies yourself. The relevant managed policies are "service-role/AWSLambdaBasicExecutionRole" and "service-role/AWSLambdaVPCAccessExecutionRole". Default: - A unique role will be generated for this lambda function. Both supplied and generated roles can always be changed by calling ``addToRolePolicy``.
+        :param security_group: (deprecated) What security group to associate with the Lambda's network interfaces. This property is being deprecated, consider using securityGroups instead. Only used if 'vpc' is supplied. Use securityGroups property instead. Function constructor will throw an error if both are specified. Default: - If the function is placed within a VPC and a security group is not specified, either by this or securityGroups prop, a dedicated security group will be created for this function.
+        :param security_groups: (experimental) The list of security groups to associate with the Lambda's network interfaces. Only used if 'vpc' is supplied. Default: - If the function is placed within a VPC and a security group is not specified, either by this or securityGroup prop, a dedicated security group will be created for this function.
+        :param timeout: (experimental) The function execution time (in seconds) after which Lambda terminates the function. Because the execution time affects cost, set this value based on the function's expected execution time. Default: Duration.seconds(3)
+        :param tracing: (experimental) Enable AWS X-Ray Tracing for Lambda Function. Default: Tracing.Disabled
+        :param vpc: (experimental) VPC network to place Lambda network interfaces. Specify this if the Lambda function needs to access resources in a VPC. Default: - Function is not placed within a VPC.
+        :param vpc_subnets: (experimental) Where to place the network interfaces within the VPC. Only used if 'vpc' is supplied. Note: internet access for Lambdas requires a NAT gateway, so picking Public subnets is not allowed. Default: - the Vpc default strategy if not specified
+        :param entry: (experimental) The path to the root directory of the function.
+        :param handler: (experimental) The name of the exported handler in the index file. Default: handler
+        :param index: (experimental) The path (relative to entry) to the index file containing the exported handler. Default: index.py
+        :param runtime: (experimental) The runtime environment. Only runtimes of the Python family are supported. Default: lambda.Runtime.PYTHON_3_7
+
+        :stability: experimental
+        """
+        if isinstance(current_version_options, dict):
+            current_version_options = _VersionOptions_9a55a63d(**current_version_options)
+        if isinstance(log_retention_retry_options, dict):
+            log_retention_retry_options = _LogRetentionRetryOptions_09658088(**log_retention_retry_options)
+        if isinstance(vpc_subnets, dict):
+            vpc_subnets = _SubnetSelection_36a13cd6(**vpc_subnets)
+        self._values: typing.Dict[str, typing.Any] = {
+            "entry": entry,
+        }
+        if max_event_age is not None:
+            self._values["max_event_age"] = max_event_age
+        if on_failure is not None:
+            self._values["on_failure"] = on_failure
+        if on_success is not None:
+            self._values["on_success"] = on_success
+        if retry_attempts is not None:
+            self._values["retry_attempts"] = retry_attempts
+        if allow_all_outbound is not None:
+            self._values["allow_all_outbound"] = allow_all_outbound
+        if allow_public_subnet is not None:
+            self._values["allow_public_subnet"] = allow_public_subnet
+        if current_version_options is not None:
+            self._values["current_version_options"] = current_version_options
+        if dead_letter_queue is not None:
+            self._values["dead_letter_queue"] = dead_letter_queue
+        if dead_letter_queue_enabled is not None:
+            self._values["dead_letter_queue_enabled"] = dead_letter_queue_enabled
+        if description is not None:
+            self._values["description"] = description
+        if environment is not None:
+            self._values["environment"] = environment
+        if events is not None:
+            self._values["events"] = events
+        if filesystem is not None:
+            self._values["filesystem"] = filesystem
+        if function_name is not None:
+            self._values["function_name"] = function_name
+        if initial_policy is not None:
+            self._values["initial_policy"] = initial_policy
+        if layers is not None:
+            self._values["layers"] = layers
+        if log_retention is not None:
+            self._values["log_retention"] = log_retention
+        if log_retention_retry_options is not None:
+            self._values["log_retention_retry_options"] = log_retention_retry_options
+        if log_retention_role is not None:
+            self._values["log_retention_role"] = log_retention_role
+        if memory_size is not None:
+            self._values["memory_size"] = memory_size
+        if profiling is not None:
+            self._values["profiling"] = profiling
+        if profiling_group is not None:
+            self._values["profiling_group"] = profiling_group
+        if reserved_concurrent_executions is not None:
+            self._values["reserved_concurrent_executions"] = reserved_concurrent_executions
+        if role is not None:
+            self._values["role"] = role
+        if security_group is not None:
+            self._values["security_group"] = security_group
+        if security_groups is not None:
+            self._values["security_groups"] = security_groups
+        if timeout is not None:
+            self._values["timeout"] = timeout
+        if tracing is not None:
+            self._values["tracing"] = tracing
+        if vpc is not None:
+            self._values["vpc"] = vpc
+        if vpc_subnets is not None:
+            self._values["vpc_subnets"] = vpc_subnets
+        if handler is not None:
+            self._values["handler"] = handler
+        if index is not None:
+            self._values["index"] = index
+        if runtime is not None:
+            self._values["runtime"] = runtime
+
+    @builtins.property
+    def max_event_age(self) -> typing.Optional[_Duration_5170c158]:
+        """(experimental) The maximum age of a request that Lambda sends to a function for processing.
+
+        Minimum: 60 seconds
+        Maximum: 6 hours
+
+        :default: Duration.hours(6)
+
+        :stability: experimental
+        """
+        result = self._values.get("max_event_age")
+        return result
+
+    @builtins.property
+    def on_failure(self) -> typing.Optional[_IDestination_7081f282]:
+        """(experimental) The destination for failed invocations.
+
+        :default: - no destination
+
+        :stability: experimental
+        """
+        result = self._values.get("on_failure")
+        return result
+
+    @builtins.property
+    def on_success(self) -> typing.Optional[_IDestination_7081f282]:
+        """(experimental) The destination for successful invocations.
+
+        :default: - no destination
+
+        :stability: experimental
+        """
+        result = self._values.get("on_success")
+        return result
+
+    @builtins.property
+    def retry_attempts(self) -> typing.Optional[jsii.Number]:
+        """(experimental) The maximum number of times to retry when the function returns an error.
+
+        Minimum: 0
+        Maximum: 2
+
+        :default: 2
+
+        :stability: experimental
+        """
+        result = self._values.get("retry_attempts")
+        return result
+
+    @builtins.property
+    def allow_all_outbound(self) -> typing.Optional[builtins.bool]:
+        """(experimental) Whether to allow the Lambda to send all network traffic.
+
+        If set to false, you must individually add traffic rules to allow the
+        Lambda to connect to network targets.
+
+        :default: true
+
+        :stability: experimental
+        """
+        result = self._values.get("allow_all_outbound")
+        return result
+
+    @builtins.property
+    def allow_public_subnet(self) -> typing.Optional[builtins.bool]:
+        """(experimental) Lambda Functions in a public subnet can NOT access the internet.
+
+        Use this property to acknowledge this limitation and still place the function in a public subnet.
+
+        :default: false
+
+        :see: https://stackoverflow.com/questions/52992085/why-cant-an-aws-lambda-function-inside-a-public-subnet-in-a-vpc-connect-to-the/52994841#52994841
+        :stability: experimental
+        """
+        result = self._values.get("allow_public_subnet")
+        return result
+
+    @builtins.property
+    def current_version_options(self) -> typing.Optional[_VersionOptions_9a55a63d]:
+        """(experimental) Options for the ``lambda.Version`` resource automatically created by the ``fn.currentVersion`` method.
+
+        :default: - default options as described in ``VersionOptions``
+
+        :stability: experimental
+        """
+        result = self._values.get("current_version_options")
+        return result
+
+    @builtins.property
+    def dead_letter_queue(self) -> typing.Optional[_IQueue_b743f559]:
+        """(experimental) The SQS queue to use if DLQ is enabled.
+
+        :default: - SQS queue with 14 day retention period if ``deadLetterQueueEnabled`` is ``true``
+
+        :stability: experimental
+        """
+        result = self._values.get("dead_letter_queue")
+        return result
+
+    @builtins.property
+    def dead_letter_queue_enabled(self) -> typing.Optional[builtins.bool]:
+        """(experimental) Enabled DLQ.
+
+        If ``deadLetterQueue`` is undefined,
+        an SQS queue with default options will be defined for your Function.
+
+        :default: - false unless ``deadLetterQueue`` is set, which implies DLQ is enabled.
+
+        :stability: experimental
+        """
+        result = self._values.get("dead_letter_queue_enabled")
+        return result
+
+    @builtins.property
+    def description(self) -> typing.Optional[builtins.str]:
+        """(experimental) A description of the function.
+
+        :default: - No description.
+
+        :stability: experimental
+        """
+        result = self._values.get("description")
+        return result
+
+    @builtins.property
+    def environment(
+        self,
+    ) -> typing.Optional[typing.Mapping[builtins.str, builtins.str]]:
+        """(experimental) Key-value pairs that Lambda caches and makes available for your Lambda functions.
+
+        Use environment variables to apply configuration changes, such
+        as test and production environment configurations, without changing your
+        Lambda function source code.
+
+        :default: - No environment variables.
+
+        :stability: experimental
+        """
+        result = self._values.get("environment")
+        return result
+
+    @builtins.property
+    def events(self) -> typing.Optional[typing.List[_IEventSource_0e6bcb85]]:
+        """(experimental) Event sources for this function.
+
+        You can also add event sources using ``addEventSource``.
+
+        :default: - No event sources.
+
+        :stability: experimental
+        """
+        result = self._values.get("events")
+        return result
+
+    @builtins.property
+    def filesystem(self) -> typing.Optional[_FileSystem_132c0ce7]:
+        """(experimental) The filesystem configuration for the lambda function.
+
+        :default: - will not mount any filesystem
+
+        :stability: experimental
+        """
+        result = self._values.get("filesystem")
+        return result
+
+    @builtins.property
+    def function_name(self) -> typing.Optional[builtins.str]:
+        """(experimental) A name for the function.
+
+        :default:
+
+        - AWS CloudFormation generates a unique physical ID and uses that
+        ID for the function's name. For more information, see Name Type.
+
+        :stability: experimental
+        """
+        result = self._values.get("function_name")
+        return result
+
+    @builtins.property
+    def initial_policy(self) -> typing.Optional[typing.List[_PolicyStatement_f75dc775]]:
+        """(experimental) Initial policy statements to add to the created Lambda Role.
+
+        You can call ``addToRolePolicy`` to the created lambda to add statements post creation.
+
+        :default: - No policy statements are added to the created Lambda role.
+
+        :stability: experimental
+        """
+        result = self._values.get("initial_policy")
+        return result
+
+    @builtins.property
+    def layers(self) -> typing.Optional[typing.List[_ILayerVersion_aa5e0c0c]]:
+        """(experimental) A list of layers to add to the function's execution environment.
+
+        You can configure your Lambda function to pull in
+        additional code during initialization in the form of layers. Layers are packages of libraries or other dependencies
+        that can be used by mulitple functions.
+
+        :default: - No layers.
+
+        :stability: experimental
+        """
+        result = self._values.get("layers")
+        return result
+
+    @builtins.property
+    def log_retention(self) -> typing.Optional[_RetentionDays_bdc7ad1f]:
+        """(experimental) The number of days log events are kept in CloudWatch Logs.
+
+        When updating
+        this property, unsetting it doesn't remove the log retention policy. To
+        remove the retention policy, set the value to ``INFINITE``.
+
+        :default: logs.RetentionDays.INFINITE
+
+        :stability: experimental
+        """
+        result = self._values.get("log_retention")
+        return result
+
+    @builtins.property
+    def log_retention_retry_options(
+        self,
+    ) -> typing.Optional[_LogRetentionRetryOptions_09658088]:
+        """(experimental) When log retention is specified, a custom resource attempts to create the CloudWatch log group.
+
+        These options control the retry policy when interacting with CloudWatch APIs.
+
+        :default: - Default AWS SDK retry options.
+
+        :stability: experimental
+        """
+        result = self._values.get("log_retention_retry_options")
+        return result
+
+    @builtins.property
+    def log_retention_role(self) -> typing.Optional[_IRole_e69bbae4]:
+        """(experimental) The IAM role for the Lambda function associated with the custom resource that sets the retention policy.
+
+        :default: - A new role is created.
+
+        :stability: experimental
+        """
+        result = self._values.get("log_retention_role")
+        return result
+
+    @builtins.property
+    def memory_size(self) -> typing.Optional[jsii.Number]:
+        """(experimental) The amount of memory, in MB, that is allocated to your Lambda function.
+
+        Lambda uses this value to proportionally allocate the amount of CPU
+        power. For more information, see Resource Model in the AWS Lambda
+        Developer Guide.
+
+        :default: 128
+
+        :stability: experimental
+        """
+        result = self._values.get("memory_size")
+        return result
+
+    @builtins.property
+    def profiling(self) -> typing.Optional[builtins.bool]:
+        """(experimental) Enable profiling.
+
+        :default: - No profiling.
+
+        :see: https://docs.aws.amazon.com/codeguru/latest/profiler-ug/setting-up-lambda.html
+        :stability: experimental
+        """
+        result = self._values.get("profiling")
+        return result
+
+    @builtins.property
+    def profiling_group(self) -> typing.Optional[_IProfilingGroup_ca898ddc]:
+        """(experimental) Profiling Group.
+
+        :default: - A new profiling group will be created if ``profiling`` is set.
+
+        :see: https://docs.aws.amazon.com/codeguru/latest/profiler-ug/setting-up-lambda.html
+        :stability: experimental
+        """
+        result = self._values.get("profiling_group")
+        return result
+
+    @builtins.property
+    def reserved_concurrent_executions(self) -> typing.Optional[jsii.Number]:
+        """(experimental) The maximum of concurrent executions you want to reserve for the function.
+
+        :default: - No specific limit - account limit.
+
+        :see: https://docs.aws.amazon.com/lambda/latest/dg/concurrent-executions.html
+        :stability: experimental
+        """
+        result = self._values.get("reserved_concurrent_executions")
+        return result
+
+    @builtins.property
+    def role(self) -> typing.Optional[_IRole_e69bbae4]:
+        """(experimental) Lambda execution role.
+
+        This is the role that will be assumed by the function upon execution.
+        It controls the permissions that the function will have. The Role must
+        be assumable by the 'lambda.amazonaws.com' service principal.
+
+        The default Role automatically has permissions granted for Lambda execution. If you
+        provide a Role, you must add the relevant AWS managed policies yourself.
+
+        The relevant managed policies are "service-role/AWSLambdaBasicExecutionRole" and
+        "service-role/AWSLambdaVPCAccessExecutionRole".
+
+        :default:
+
+        - A unique role will be generated for this lambda function.
+        Both supplied and generated roles can always be changed by calling ``addToRolePolicy``.
+
+        :stability: experimental
+        """
+        result = self._values.get("role")
+        return result
+
+    @builtins.property
+    def security_group(self) -> typing.Optional[_ISecurityGroup_d72ab8e8]:
+        """(deprecated) What security group to associate with the Lambda's network interfaces. This property is being deprecated, consider using securityGroups instead.
+
+        Only used if 'vpc' is supplied.
+
+        Use securityGroups property instead.
+        Function constructor will throw an error if both are specified.
+
+        :default:
+
+        - If the function is placed within a VPC and a security group is
+        not specified, either by this or securityGroups prop, a dedicated security
+        group will be created for this function.
+
+        :deprecated: - This property is deprecated, use securityGroups instead
+
+        :stability: deprecated
+        """
+        result = self._values.get("security_group")
+        return result
+
+    @builtins.property
+    def security_groups(self) -> typing.Optional[typing.List[_ISecurityGroup_d72ab8e8]]:
+        """(experimental) The list of security groups to associate with the Lambda's network interfaces.
+
+        Only used if 'vpc' is supplied.
+
+        :default:
+
+        - If the function is placed within a VPC and a security group is
+        not specified, either by this or securityGroup prop, a dedicated security
+        group will be created for this function.
+
+        :stability: experimental
+        """
+        result = self._values.get("security_groups")
+        return result
+
+    @builtins.property
+    def timeout(self) -> typing.Optional[_Duration_5170c158]:
+        """(experimental) The function execution time (in seconds) after which Lambda terminates the function.
+
+        Because the execution time affects cost, set this value
+        based on the function's expected execution time.
+
+        :default: Duration.seconds(3)
+
+        :stability: experimental
+        """
+        result = self._values.get("timeout")
+        return result
+
+    @builtins.property
+    def tracing(self) -> typing.Optional[_Tracing_34f0a955]:
+        """(experimental) Enable AWS X-Ray Tracing for Lambda Function.
+
+        :default: Tracing.Disabled
+
+        :stability: experimental
+        """
+        result = self._values.get("tracing")
+        return result
+
+    @builtins.property
+    def vpc(self) -> typing.Optional[_IVpc_3795853f]:
+        """(experimental) VPC network to place Lambda network interfaces.
+
+        Specify this if the Lambda function needs to access resources in a VPC.
+
+        :default: - Function is not placed within a VPC.
+
+        :stability: experimental
+        """
+        result = self._values.get("vpc")
+        return result
+
+    @builtins.property
+    def vpc_subnets(self) -> typing.Optional[_SubnetSelection_36a13cd6]:
+        """(experimental) Where to place the network interfaces within the VPC.
+
+        Only used if 'vpc' is supplied. Note: internet access for Lambdas
+        requires a NAT gateway, so picking Public subnets is not allowed.
+
+        :default: - the Vpc default strategy if not specified
+
+        :stability: experimental
+        """
+        result = self._values.get("vpc_subnets")
+        return result
+
+    @builtins.property
+    def entry(self) -> builtins.str:
+        """(experimental) The path to the root directory of the function.
+
+        :stability: experimental
+        """
+        result = self._values.get("entry")
+        assert result is not None, "Required property 'entry' is missing"
+        return result
+
+    @builtins.property
+    def handler(self) -> typing.Optional[builtins.str]:
+        """(experimental) The name of the exported handler in the index file.
+
+        :default: handler
+
+        :stability: experimental
+        """
+        result = self._values.get("handler")
+        return result
+
+    @builtins.property
+    def index(self) -> typing.Optional[builtins.str]:
+        """(experimental) The path (relative to entry) to the index file containing the exported handler.
+
+        :default: index.py
+
+        :stability: experimental
+        """
+        result = self._values.get("index")
+        return result
+
+    @builtins.property
+    def runtime(self) -> typing.Optional[_Runtime_8b970b80]:
+        """(experimental) The runtime environment.
+
+        Only runtimes of the Python family are
+        supported.
+
+        :default: lambda.Runtime.PYTHON_3_7
+
+        :stability: experimental
+        """
+        result = self._values.get("runtime")
+        return result
+
+    def __eq__(self, rhs: typing.Any) -> builtins.bool:
+        return isinstance(rhs, self.__class__) and rhs._values == self._values
+
+    def __ne__(self, rhs: typing.Any) -> builtins.bool:
+        return not (rhs == self)
+
+    def __repr__(self) -> str:
+        return "PythonFunctionProps(%s)" % ", ".join(
+            k + "=" + repr(v) for k, v in self._values.items()
+        )
+
+
+__all__ = [
+    "PythonFunction",
+    "PythonFunctionProps",
+]
+
+publication.publish()
