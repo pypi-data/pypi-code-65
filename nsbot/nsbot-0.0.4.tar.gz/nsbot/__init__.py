@@ -1,0 +1,1 @@
+from nsbot.ns import MetarSpeciTaf
