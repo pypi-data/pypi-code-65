@@ -1,0 +1,16 @@
+from abc import *
+
+class AbstractModel:
+    @abstractmethod
+    def get_table_name (self):
+        pass
+
+    @abstractmethod
+    def validate (self, data, create = False):
+        pass
+
+    def get_pk (self):
+        raise NotImplementedError ('return pk column name like id')
+
+    def get_fks (self):
+        raise NotImplementedError ('return fks like {fk_alias: (fk_column, fk_model)}')
