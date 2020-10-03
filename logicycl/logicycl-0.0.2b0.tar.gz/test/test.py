@@ -1,0 +1,1 @@
+from logicycl import Logic, AND, OR
