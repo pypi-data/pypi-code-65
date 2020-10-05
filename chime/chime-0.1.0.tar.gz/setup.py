@@ -1,0 +1,21 @@
+# -*- coding: utf-8 -*-
+from setuptools import setup
+
+modules = \
+['chime']
+setup_kwargs = {
+    'name': 'chime',
+    'version': '0.1.0',
+    'description': 'Python sound notifications made easy.',
+    'long_description': '<div align=\'center\'>\n    <h1>chime</h1>\n    <q><i>Python sound notifications made easy.</i></q>\n</div>\n<br>\n\nI made this because I wanted something simple to monitor long-running number crunching scripts.\n\nSpecial thanks to [Michael Vlah](https://github.com/vlahm) for giving up the "chime" name on PyPI.\n\n## Installation\n\n```sh\npip install chime\n```\n\nThis library has **no dependencies**. The IPython/Jupyter functionality is only imported if you\'ve installed the `ipython` library. It should work for any Python version above or equal to 3.4.\n\n## Basic usage\n\n`chime` puts four functions at your disposal:\n\n```py\n>>> import chime\n\n>>> chime.success()\n>>> chime.warning()\n>>> chime.error()\n>>> chime.info()\n\n```\n\nCalling any of the above functions will play a sound. Note that the sounds are played in asynchronous processes, and are thus non-blocking. Each function should take around 2ms to execute, regardless of the sound length. You\'re free to use each sound notification in any way you see fit. I\'m not your mama.\n\n## Theming\n\nThe sounds that are played depend on which theme is being used.\n\n```py\n>>> chime.theme()  # return the current theme\n\'chime\'\n\n```\n\nSeveral themes are available:\n\n```py\n>>> chime.themes()\n[\'chime\', \'mario\', \'zelda\']\n\n```\n\nThe theme can be changed by passing a theme name to the `theme` function:\n\n```py\n>>> chime.theme(\'zelda\')\n\n```\n\nNote that if you set the theme to `\'random\'`, a random theme will be picked each time you play a sound.\n\n## IPython/Jupyter magic\n\nLoad the extension as so:\n\n```py\n%load_ext chime\n```\n\nYou can wrap a line:\n\n```py\n%chime print("I\'m a line")\n```\n\nYou can also wrap an entire cell:\n\n```py\n%%chime\n\nprint("I\'m a cell")\n```\n\nThe magic command will call `chime.success` when the line/cell finishes successfully. Otherwise, `chime.error` is called whenever an exception is raised.\n\n## Exception notifications\n\nIf you run `chime.notify_exceptions`, then `chime.error` will be called whenever an exception is raised.\n\n```py\nchime.notify_exceptions()\n\nraise ValueError("I\'m going to make some noise")\n```\n\n## Platform support\n\nUnder the hood, `chime` runs a command in the shell to play a `.wav` file. The command-line program that is used depends on the [platform](https://www.wikiwand.com/en/Computing_platform). Platform information is available in the [`sys.platform` variable](https://docs.python.org/3/library/sys.html#sys.platform) as well as the [`platform` module](https://docs.python.org/3/library/platform.html) from the standard library. Currently, the supported platforms are:\n\n- `darwin` (which is technically an OS, but whatever)\n- `linux`\n- `windows`\n\nA `UserWarning` is raised if you run a `chime` sound on an unsupported platform. Feel free to get in touch or issue a pull request if you want to add support for a specific platform. Likewise, don\'t hesitate if you\'re encountering trouble with one of the above platforms. I won\'t bite.\n\n## Adchime a new theme\n\nI have toyed with the idea of allowing users to add their own theme(s), but at the moment I rather keep things minimal. However, I\'m happy to integrate new themes into the library. You can propose a new theme by [opening a pull request](https://github.com/creme-ml/creme/issues/new) that adds the necessary .wav files to the [`themes` directory](https://github.com/MaxHalford/chime/tree/main/themes). Be creative 👩\u200d🎨!\n\n## Things to do\n\n- Some mechanism to automatically call `chime.warning` when a warning occurs.\n- Command-line support, maybe.\n- More themes!\n\n## What about unit tests?\n\nGod no. I wouldn\'t even know where to begin.\n\n## License\n\nAs you would probably expect, this is MIT licensed.\n',
+    'author': 'Max Halford',
+    'author_email': 'maxhalford25@gmail.com',
+    'maintainer': None,
+    'maintainer_email': None,
+    'url': 'https://github.com/MaxHalford/chime',
+    'py_modules': modules,
+    'python_requires': '>=3.4,<4.0',
+}
+
+
+setup(**setup_kwargs)
