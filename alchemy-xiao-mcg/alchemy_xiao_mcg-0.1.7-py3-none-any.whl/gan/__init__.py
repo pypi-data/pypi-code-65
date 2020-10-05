@@ -1,0 +1,1 @@
+from .losses import GANLossMixIn    # noqa: 401
