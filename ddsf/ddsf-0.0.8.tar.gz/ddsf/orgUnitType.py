@@ -1,0 +1,19 @@
+from .resource import Resource
+
+class OrgUnitType(Resource):
+    def __init__(self, url, session, data={}):
+        object.__setattr__(self, "session", session)
+        object.__setattr__(self, "data", data)
+        object.__setattr__(self, "url", url + "OrgUnitType()")
+
+    def get(self, id):
+        data = self.session.get(self.url + f"?$filter=OrgUnitTypeId eq {id}")
+        if data.status_code == 200:
+            object.__setattr__(self, "data", data.json()["value"][0])
+
+    def update(self):
+        url = self.url[:-1] + f"{self.data['OrgUnitTypeId']})"
+        data = self.session.patch(url, json=self.data)
+        if data.status_code == 200:
+            self.data = data.json()["value"][0]
+        return data
