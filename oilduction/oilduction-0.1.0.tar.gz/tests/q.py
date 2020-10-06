@@ -1,0 +1,2 @@
+def q():
+    print('qq')
