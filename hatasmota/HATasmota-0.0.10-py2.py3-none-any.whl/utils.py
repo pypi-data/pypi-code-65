@@ -1,0 +1,274 @@
+"""Tasmota utility functions."""
+from functools import reduce
+import json
+import logging
+import operator
+import re
+
+from .const import (
+    CONF_DEVICENAME,
+    CONF_FRIENDLYNAME,
+    CONF_FULLTOPIC,
+    CONF_HOSTNAME,
+    CONF_LIGHT_SUBTYPE,
+    CONF_MAC,
+    CONF_OPTIONS,
+    CONF_PREFIX,
+    CONF_RELAY,
+    CONF_STATE,
+    CONF_TOPIC,
+    LST_NONE,
+    LST_RGBW,
+    CONF_LINK_RGB_CT,
+    OPTION_PWM_MULTI_CHANNELS,
+    PREFIX_CMND,
+    PREFIX_STAT,
+    PREFIX_TELE,
+    STATE_OFF,
+    STATE_ON,
+    CONF_ONLINE,
+    CONF_OFFLINE,
+    RSLT_ACTION,
+    RSLT_POWER,
+    RSLT_STATE,
+    RSLT_TRIG,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def get_by_path(root, items):
+    """Access a nested object in root by item sequence."""
+    return reduce(operator.getitem, items, root)
+
+
+def set_by_path(root, items, value):
+    """Set a value in a nested object in root by item sequence."""
+    get_by_path(root, items[:-1])[items[-1]] = value
+
+
+def del_by_path(root, items):
+    """Delete a key-value in a nested object in root by item sequence."""
+    del get_by_path(root, items[:-1])[items[-1]]
+
+
+def _get_topic(config, prefix):
+    topic = config[CONF_FULLTOPIC]
+    topic = topic.replace("%hostname%", config[CONF_HOSTNAME])
+    topic = topic.replace("%id%", config[CONF_MAC][-6:])
+    topic = topic.replace("%prefix%", prefix)
+    topic = topic.replace("%topic%", config[CONF_TOPIC])
+    return topic
+
+
+def _get_topic_cmnd(config):
+    return _get_topic(config, config[CONF_PREFIX][PREFIX_CMND])
+
+
+def _get_topic_stat(config):
+    return _get_topic(config, config[CONF_PREFIX][PREFIX_STAT])
+
+
+def _get_topic_tele(config):
+    return _get_topic(config, config[CONF_PREFIX][PREFIX_TELE])
+
+
+def get_topic_command_channel(config, idx):
+    """Get topic for command channel."""
+    return _get_topic_cmnd(config) + f"Channel{idx+1}"
+
+
+def get_topic_command_color(config, x=2):
+    """Get topic for command channel."""
+    return _get_topic_cmnd(config) + f"Color{x}"
+
+
+def get_topic_command_color_temp(config):
+    """Get topic for command channel."""
+    return _get_topic_cmnd(config) + "CT"
+
+
+def get_topic_command_dimmer(config, idx):
+    """Get topic for command dimmer."""
+    return _get_topic_cmnd(config) + f"Dimmer{idx}"
+
+
+def get_topic_command_effect(config):
+    """Get topic for command dimmer."""
+    return _get_topic_cmnd(config) + "Scheme"
+
+
+def get_topic_command_power(config, idx):
+    """Get topic for command power."""
+    return _get_topic_cmnd(config) + f"POWER{idx+1}"
+
+
+def get_topic_command_state(config):
+    """Get topic for command power."""
+    return _get_topic_cmnd(config) + "STATE"
+
+
+def get_topic_command_white_value(config):
+    """Get topic for command power."""
+    return _get_topic_cmnd(config) + "White"
+
+
+def get_topic_command_status(config):
+    """Get topic for command power."""
+    return _get_topic_cmnd(config) + "STATUS"
+
+
+def get_topic_stat_button_trigger(config, idx):
+    """Get topic for tele state."""
+    return _get_topic_stat(config) + f"BUTTON{idx+1}T"
+
+
+def get_topic_stat_status(config, idx=None):
+    """Get topic for tele state."""
+    if idx is None:
+        return _get_topic_stat(config) + "STATUS"
+    return _get_topic_stat(config) + f"STATUS{idx}"
+
+
+def get_topic_stat_switch(config, idx):
+    """Get topic for tele state."""
+    return _get_topic_stat(config) + f"SWITCH{idx+1}"
+
+
+def get_topic_stat_switch_trigger(config, idx):
+    """Get topic for tele state."""
+    return _get_topic_stat(config) + f"SWITCH{idx+1}T"
+
+
+def get_topic_tele_sensor(config):
+    """Get topic for tele state."""
+    return _get_topic_tele(config) + "SENSOR"
+
+
+def get_topic_tele_state(config):
+    """Get topic for tele state."""
+    return _get_topic_tele(config) + "STATE"
+
+
+def get_topic_tele_will(config):
+    """Get topic for tele will."""
+    return _get_topic_tele(config) + "LWT"
+
+
+def config_get_state_power_on(config):
+    """Get command/result on."""
+    return config[CONF_STATE][STATE_ON]
+
+
+def config_get_state_power_off(config):
+    """Get command/result off."""
+    return config[CONF_STATE][STATE_OFF]
+
+
+def config_get_state_offline(config):
+    """Get state offline."""
+    return config[CONF_OFFLINE]
+
+
+def config_get_state_online(config):
+    """Get state online."""
+    return config[CONF_ONLINE]
+
+
+def get_value(status, key, idx=None, idx_optional=False):
+    """Get status from JSON formatted status or result."""
+    try:
+        status = json.loads(status)
+    except json.decoder.JSONDecodeError:
+        _LOGGER.debug("Invalid JSON '%s'", status)
+        return None
+    if idx is None:
+        return status.get(key)
+    if key in status and idx_optional and idx == 0:
+        return status[key]
+    key = f"{key}{idx+1}"
+    return status[key] if key in status else None
+
+
+def get_value_by_path(status, path):
+    """Get status from JSON formatted status or result by path."""
+    try:
+        status = json.loads(status)
+        return get_by_path(status, path)
+    except (json.decoder.JSONDecodeError, KeyError):
+        return None
+
+
+def get_state_power(status, idx):
+    """Get state power."""
+    return get_value(status, RSLT_POWER, idx=idx, idx_optional=True)
+
+
+def get_state_state(status):
+    """Get state of switch."""
+    return get_value(status, RSLT_STATE)
+
+
+def get_state_button_trigger(status):
+    """Get state of button."""
+    return get_value(status, RSLT_ACTION)
+
+
+def get_state_switch_trigger(status):
+    """Get state of switch."""
+    return get_value(status, RSLT_TRIG)
+
+
+def config_get_friendlyname(config, platform, idx):
+    """Get config friendly name."""
+    if idx >= len(config[CONF_FRIENDLYNAME]) or config[CONF_FRIENDLYNAME][idx] is None:
+        return f"{config[CONF_DEVICENAME]} {platform} {idx}"
+    return config[CONF_FRIENDLYNAME][idx]
+
+
+TOPIC_MATCHER = re.compile(r"^(?P<mac>[A-Z0-9_-]+)\/(?:config|sensors)$")
+
+
+def discovery_topic_get_mac(topic, discovery_topic):
+    """Get MAC from discovery topic."""
+    topic_trimmed = topic.replace(f"{discovery_topic}/", "", 1)
+    match = TOPIC_MATCHER.match(topic_trimmed)
+
+    if not match:
+        return None
+
+    (mac,) = match.groups()
+    return mac
+
+
+def discovery_topic_is_device_config(topic):
+    """Return True if the discovery topic is device configuration."""
+    return topic.endswith("config")
+
+
+def get_number_of_lights(config):
+    """Return number of Tasmota power device representing light(s)."""
+    light_sub_type = config[CONF_LIGHT_SUBTYPE]
+    number_of_lights = 0
+
+    if light_sub_type != LST_NONE:
+        number_of_lights = 1
+        if config[CONF_OPTIONS][OPTION_PWM_MULTI_CHANNELS]:
+            # Light split to one dimmer per channel
+            number_of_lights = light_sub_type
+        elif not config[CONF_LINK_RGB_CT] and light_sub_type >= LST_RGBW:
+            # Light split in RGB + White or RGB + CT
+            number_of_lights = 2
+
+    return number_of_lights
+
+
+def get_light_index(config):
+    """Return index of the first Tasmota power device representing a light."""
+
+    number_of_devices = sum(x > 0 for x in config[CONF_RELAY])
+    number_of_lights = get_number_of_lights(config)
+
+    light_index = number_of_devices - number_of_lights
+
+    return light_index
