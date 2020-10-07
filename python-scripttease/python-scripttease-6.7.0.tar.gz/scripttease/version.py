@@ -1,0 +1,5 @@
+DATE = "2020-10-06"
+VERSION = "6.7.0"
+MAJOR = 6
+MINOR = 7
+PATCH = 0
