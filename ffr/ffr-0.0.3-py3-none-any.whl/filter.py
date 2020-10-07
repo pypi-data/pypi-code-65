@@ -1,0 +1,319 @@
+import logging
+import os
+import re
+import sys
+from configparser import DuplicateSectionError, NoSectionError, ParsingError
+
+import praw.exceptions
+from praw.exceptions import ClientException
+from praw.models.reddit.comment import Comment
+from praw.models.reddit.submission import Submission
+from prawcore.exceptions import ResponseException, OAuthException
+from rich import box
+from rich.text import Text
+from rich.console import Console
+from rich.table import Table
+
+# TODO: Improve menu
+CHOICES = """What do you want to get?
+1. Get every Posts and Comment.
+2. Get every Post.
+3. Get every Comment.
+4. Get Text-Only Posts.
+5. Get Posts with Media.
+6. Filter specific subreddits.
+7. Search in Post's Titles.
+8. Search in Comments.
+9. Filter NSFW.
+10. Posts with external websites.
+
+0. Exit.\n\n"""
+
+MEDIA_CHOICES = """1. Images
+2. Gifs
+3. Videos
+4. All of the above (Not working...)
+
+0. Return"""
+
+
+class Filter:
+
+    def __init__(self, user='USER', limit=500):
+        self.user = user
+        self.limit = limit
+        self.saved = self.get_saved()
+
+    @staticmethod
+    def _clear_screen():
+        os.system('cls' if os.name == 'nt' else 'clear')
+
+    def main_menu(self):
+        self._clear_screen()
+        user_input = input(CHOICES)
+        matched = []
+        print("")
+
+        while user_input != '0':
+            if user_input == '1':
+                matched = self.get_all()
+            elif user_input == '2':
+                matched = self.get_posts()
+            elif user_input == '3':
+                matched = self.get_comments()
+            elif user_input == '4':
+                matched = self.get_self()
+            elif user_input == '5':
+                matched = self.media_menu()
+            elif user_input == '6':
+                subs = self.ask_for_subreddits()
+                matched = self.get_subreddit(subs)
+            elif user_input == '7':
+                print("What do you want to search: ", end='')
+                query = input()
+                print("")
+                matched = self.search_posts(query)
+            elif user_input == '8':
+                print("What do you want to search: ", end='')
+                query = input()
+                print("")
+                matched = self.search_comments(query)
+            elif user_input == '9':
+                matched = self.get_nsfw()
+            elif user_input == '10':
+                matched = self.get_external_links()
+            else:
+                print("Invalid choice")
+
+            self.parse_content(matched)
+            sys.exit(0)
+
+    @staticmethod
+    def ask_for_subreddits():
+        """ Asks for subreddits, splits with a + sign and returns a list """
+        entered_subs = []
+        print("Input your subs (wtf, python): ")
+        user_input = input().split(',')
+
+        for sub in user_input:
+            entered_subs.append(sub.strip())
+        return entered_subs
+
+    def media_menu(self):
+        user_input = input(MEDIA_CHOICES)
+        param = ""
+        if user_input == '1':
+            param = "img"
+        elif user_input == '2':
+            param = "gif"
+        elif user_input == '3':
+            param = "vid"
+        elif user_input == '4':
+            param = "all"
+        return self.get_media(param)
+
+    def get_saved(self):
+        """Returns every saved element as a list of RedditBase"""
+        try:
+            reddit = praw.Reddit(self.user, user_agent='filter_for_reddit')
+            print("Getting saved elements...")
+            return reddit.user.me().saved(limit=self.limit)
+        except NoSectionError:
+            print("Please make sure the name of the praw.ini configuration \
+                exist, is not empty and written correctly.")
+            sys.exit()
+
+        except ParsingError as e:
+            e = str(e).split("\n")
+            print(f"The praw.ini file is not written correctly.\
+                  An error was found in {e[1]}")
+            sys.exit()
+
+        except DuplicateSectionError as e:
+            print(
+                f"Error found on line {e.args[2]} \
+                    on the configuration file praw.ini"
+                f"\nAre you trying to use two or more account\
+                     with the username {e.args[0]}?")
+            sys.exit()
+
+        except ResponseException as e:
+            print(f"{e.args[0]}. Is your praw.ini file well written?")
+            sys.exit()
+
+        except ClientException as e:
+            e = str(e).split("\n")
+            print(f"{e[0]}. Please check your praw.ini file.")
+            sys.exit()
+
+        except OAuthException:
+            print("Something went wrong while retrieving your saved elements.\
+                 Are your password and username correct?")
+            sys.exit()
+
+        except AttributeError:
+            print("Something went wrong while retrieving your saved elements.\
+                 Are your password and username correct?")
+            sys.exit()
+
+    def parse_content(self, elements):
+        """Parse content, showing a short title or comment body,
+        also creating a direct link, then call _show_table"""
+
+        table_data = []
+        rlink = "https://www.reddit.com"
+        slink = "https://redd.it"
+
+        for i, element in enumerate(elements):
+            if type(element) == Submission:
+                title = element.title
+                link = slink + "/" + element.id
+            else:
+                title = element.body
+                # Makes comments a little bit tidier by removing new lines.
+                title = " ".join(title.split())
+                # Creates a short link for comments.
+                # link_id is something like "t3_....", I remove the t3_
+                link = f"{rlink}/comments/{element.link_id[3:]}/_/{element.id}"
+
+            # These lines embed the link so rich can make a clickable text.
+            sub = f"r/{element.subreddit}"
+            sub = f"[link={rlink}/{sub}]{sub}[\link]"
+
+            table_data.append(
+                [sub, Text(title, style=f"link {link}", no_wrap=True), link])
+
+        if table_data:
+            self._show_table(table_data)
+        else:
+            print("There was nothing found for this query :/")
+
+    def _show_table(self, table_data):
+        table = Table(header_style="bold", show_lines=True,
+                      box=box.ROUNDED, border_style="dark_red")
+        table.add_column("Subreddits", justify='left')
+        table.add_column("Posts and Comments", justify='center')
+
+        if os.name == 'nt':
+            table.add_column("Links", justify='left', no_wrap=True)
+
+        for i, _ in enumerate(table_data):
+            if os.name == 'nt':
+                table.add_row(*table_data[i])
+            else:
+                # If running on Windows, don't add the links to the table
+                table.add_row(*table_data[i][0:2])
+
+        self._clear_screen()
+        Console().print(table)
+
+    def get_all(self):
+        """Just return every saved item, no filter applied."""
+        return [x for x in self.saved]
+
+    def get_self(self):
+        self_posts = []
+        for element in self.saved:
+            if type(element) == Submission and element.is_self:
+                self_posts.append(element)
+
+        return self_posts
+
+    def get_nsfw(self):
+        nsfw = []
+        for element in self.saved:
+            if element.over_18:
+                nsfw.append(element)
+        return nsfw
+
+    def get_subreddit(self, subreddits):
+        matched_subreddits = []
+        for element in self.saved:
+            if str(element.subreddit).lower() in subreddits:
+                matched_subreddits.append(element)
+
+        return matched_subreddits
+
+    def get_media(self, media_type):
+        """Get media, it can be video, gif or image"""
+        # Here we set the pattern according to the type of file we want
+        if media_type == "img":
+            pattern = r"i.redd.it\/.+\.(jpg|jpeg|png)|imgur.com\/.+\.(jpg|jpeg|png)"
+        elif media_type == "gif":
+            # i.imgur.com/[ANYTHING].gifv
+            # i.redd.it/[ANYTHING].gif
+            pattern = r"i.redd.it\/.+\.gif|i.imgur\.com\/.+\.gifv|gfycat"
+        elif media_type == "vid":
+            # This could be improved, don't know how tho
+            pattern = r"pornhub.com|v\.redd\.it|youtube.com|vimeo"
+        else:  # TODO: Maybe raise an error?
+            pattern = ".+"
+
+        # Now we check each URL and save only the ones that match
+        # the previously set pattern.
+        matched_posts = []
+        for element in self.saved:
+            if type(element) == Submission and re.search(pattern, element.url):
+                matched_posts.append(element)
+
+        return matched_posts
+
+    def get_external_links(self):
+        posts = []
+        # This should match any website that is not:
+        # Reddit, Imgur, Gfycat, Youtube, Pornhub or Vimeo
+        # aka External sites that don't belong in media.
+        # I suck at regex,
+        # so if anyone wants to improve this in any way, I'm up for it :)
+
+        pattern = r"^(?!(https?:\/\/)?(www\.)?((i\.|v\.)?(redd|imgur|reddit|gfycat|youtube|youtu|pornhub|vimeo)\.(com|it|net|gif|jpg|jpeg|png|be).+)).+$"
+
+        for element in self.saved:
+            if type(element) == Submission:
+                if re.search(pattern, element.url):
+                    posts.append(element)
+        return posts
+
+    def get_posts(self):
+        posts = []
+        for element in self.saved:
+            if type(element) == Submission:
+                posts.append(element)
+        return posts
+
+    def get_comments(self):
+        comments = []
+        for element in self.saved:
+            if type(element) == Comment:
+                comments.append(element)
+        return comments
+
+    def search_posts(self, query):
+        # TODO: Improve search, things like "tip" don't show up.
+        posts = self.get_posts()
+        matched_posts = []
+
+        for post in posts:
+            if query.lower() in str(post.title).lower():
+                matched_posts.append(post)
+        return matched_posts
+
+    def search_comments(self, query):
+        comments = self.get_comments()
+        matched_comments = []
+
+        for comment in comments:
+            if query.lower() in str(comment.body).lower():
+                matched_comments.append(comment)
+        return matched_comments
+
+
+if __name__ == '__main__':
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    for logger_name in ("praw", "prawcore"):
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(handler)
+
+    Filter()
