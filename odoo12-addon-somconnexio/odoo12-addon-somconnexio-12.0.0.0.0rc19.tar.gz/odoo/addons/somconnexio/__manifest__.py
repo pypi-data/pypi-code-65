@@ -1,0 +1,78 @@
+{
+    'name': "Odoo Som Connexió customizations",
+    'version': '12.0.0.0.0-rc19',
+    'depends': [
+        'easy_my_coop_api',
+        'easy_my_coop_es',
+        'easy_my_coop_sponsorship',
+        'sale_management',
+        'contract',
+        'crm_lead_product',
+        'mass_mailing_list_dynamic',
+        'web_favicon',
+        'web_responsive',
+        'web_decimal_numpad_dot',
+        'web_no_bubble',
+        'web_searchbar_full_width',
+        'partner_firstname',
+        'mail',
+        'queue_job',
+        'component_event',
+        'stock',
+        'l10n_es'
+    ],
+    'external_dependencies': {
+        'python': ['otrs_somconnexio'],
+    },
+    'author': "Coopdevs Treball SCCL",
+    'website': 'https://coopdevs.org',
+    'category': "Cooperative management",
+    'description': """
+    Odoo Som Connexió customizations.
+    """,
+    "license": "AGPL-3",
+    'data': [
+        'data/product_categories.xml',
+        'views/subscription_request_view.xml',
+        'views/coop_agreement_view.xml',
+        'views/res_partner_view.xml',
+        'views/contract_view.xml',
+        'views/service_technology_service_supplier.xml',
+        'views/product_pricelist_view.xml',
+        'views/product_category_technology_supplier_view.xml',
+        'views/previous_provider_view.xml',
+        'views/menus.xml',
+        'views/crm_lead.xml',
+        'views/crm_lead_line.xml',
+        'views/mobile_isp_info_view.xml',
+        'views/broadband_isp_info_view.xml',
+        'views/stock_move_line_view.xml',
+        'views/stock_production_lot.xml',
+        'views/mobile_service_contract_info_view.xml',
+        'views/orange_adsl_service_contract_info_view.xml',
+        'views/vodafone_fiber_service_contract_info.xml',
+        'views/orange_fiber_service_contract_info.xml',
+        'security/ir.model.access.csv',
+        'data/service_technology.xml',
+        'data/service_supplier.xml',
+        'data/service_technology_service_supplier.xml',
+        'data/product.category.technology.supplier.csv',
+        'data/product_attribute.xml',
+        'data/product_attribute_value.xml',
+        'data/product_product.xml',
+        'data/product.template.attribute.line.csv',
+        'data/product.template.csv',
+        'data/company.xml',
+        'data/mail.mass_mailing.list.csv',
+        'data/res.users.xml',
+        'data/previous.provider.csv',
+        'views/contract_templates.xml',
+    ],
+    'demo': [
+        'demo/partner.xml'
+    ],
+    'qweb': [
+        'static/src/xml/contract_email.xml'
+    ]
+
+}
