@@ -1,0 +1,21 @@
+MAX_WORKERS = 4
+
+# socket
+SOCKET_SERVER = ('0.0.0.0', 8081)
+SOCKET_MAX_CONNECTIONS = 1
+SOCKET_RECV_LENGTH = 9
+
+# camera
+FPS = 3
+TEXT_COORDINATES = [5, 15]
+PT_CAMERA_FOURCC = 'Y16 '
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+
+# round pixels
+IR_ROUND_PIXEL = 180
+
+# formatting
+PT_PIXEL_BYTES_FORMAT = 'big'
+FRAME_ENCODING_FORMAT = '.jpg'
+
+BUFFER_FRAME_SEPARATOR = b'\n\r\n\r'
