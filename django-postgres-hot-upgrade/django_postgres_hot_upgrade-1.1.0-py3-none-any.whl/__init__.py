@@ -1,0 +1,1 @@
+default_app_config = "django_postgres_hot_upgrade.app.PostgresHotUpgradeConfig"
