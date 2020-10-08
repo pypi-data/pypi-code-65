@@ -1,0 +1,131 @@
+import os
+import sys
+import glob
+import inspect
+from time import sleep
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
+
+from mlc_tools import Mlc
+
+
+def get_root():
+    return os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + '/..')
+
+
+def run_tests(generator, root, withdata=False, cpp=True, python=True, php=True, js=True, with_join=False):
+    def run(lang, serialized_format, join_to_one_file=False):
+        out_directory = root + 'generated_%s' % (lang if lang != 'cpp' else lang + '/' + serialized_format)
+
+        # clean python pyc files:
+        def clean_pyc():
+            temp_files = glob.glob(out_directory + '/*.pyc')
+            for filePath in temp_files:
+                try:
+                    os.remove(filePath)
+                except OSError:
+                    pass
+
+        clean_pyc()
+        generator.generate(language=lang,
+                           out_directory=out_directory,
+                           formats=serialized_format,
+                           join_to_one_file=join_to_one_file,
+                           )
+        if withdata:
+            generator.generate_data(data_directory=root + 'data_%s/' % serialized_format,
+                                    out_data_directory=root + 'assets')
+        generator.run_test(test_script=root + 'test_%s.py' % lang,
+                           test_script_args=serialized_format)
+        clean_pyc()
+        print('-----------------------------------------')
+        print('|  test with params [{}, {}] finished'.format(lang, serialized_format))
+        print('-----------------------------------------')
+
+    if cpp:
+        run('cpp', 'json')
+        run('cpp', 'xml')
+    if python:
+        run('py', 'json', False)
+        run('py', 'xml', False)
+        with_join and run('py', 'json', True)
+        with_join and run('py', 'xml', True)
+    if php:
+        run('php', 'json', False)
+        run('php', 'xml', False)
+        with_join and run('php', 'json', True)
+        with_join and run('php', 'xml', True)
+    if js:
+        run('js', 'json')
+
+
+def simple_test():
+    root = get_root() + '/tests/simple_test/'
+    generator = Mlc(configs_directory=root + 'config',
+                    side='client',
+                    disable_logs=False,
+                    generate_tests=True,
+                    generate_intrusive=True,
+                    generate_factory=True,
+                    auto_registration=False)
+    generator.add_config_directories(root + 'config_additional')
+    generator.add_data_directories(root + 'data_additional')
+    run_tests(generator, root, True, with_join=True)
+    return 0
+
+
+def test_functions():
+    root = get_root() + '/tests/test_functions/'
+    generator = Mlc(configs_directory=root + 'config', generate_intrusive=True, generate_factory=True)
+    run_tests(generator, root)
+    return 0
+
+
+def test_database():
+    root = get_root() + '/tests/test_database/'
+    generator = Mlc(configs_directory=root + 'config',
+                    generate_intrusive=True,
+                    generate_factory=True,
+                    generate_tests=True)
+    run_tests(generator, root)
+    return 0
+
+
+def test_serialize():
+    root = get_root()
+    python = 'python3' if sys.version_info[0] == 3 else 'python'
+    command = '{} {}/tests/test_serialize/run.py'.format(python, root)
+    result = os.system(command)
+    if 0 != result:
+        sys.exit(1)
+    return 0
+
+
+def unit_tests_generator():
+    root = get_root() + '/tests/unit_tests_generator/'
+    generator = Mlc(configs_directory=root, generate_intrusive=True, generate_factory=True, generate_tests=True)
+    run_tests(generator, root)
+    return 0
+
+
+def test_virtual_methods():
+    root = get_root() + '/tests/test_virtual_methods/'
+    generator = Mlc(configs_directory=root, generate_intrusive=True, generate_factory=True, generate_tests=True)
+    run_tests(generator, root, python=False, php=False)
+    return 0
+
+
+if __name__ == '__main__':
+    if len(sys.argv) == 1:
+        simple_test()
+        test_serialize()
+        test_functions()
+        unit_tests_generator()
+        test_virtual_methods()
+    else:
+        exec(sys.argv[1])
+
+    # Dont run this test in CI
+    # test_database()
