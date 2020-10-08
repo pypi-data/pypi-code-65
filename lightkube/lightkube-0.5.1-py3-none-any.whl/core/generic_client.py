@@ -1,0 +1,280 @@
+import time
+from typing import Type, Any, Dict, Union
+import dataclasses
+from dataclasses import dataclass
+import json
+import asyncio
+
+import httpx
+
+from . import resource as r
+from ..config.kubeconfig import KubeConfig, SingleConfig
+from ..config import client_adapter
+from .exceptions import ApiError
+from .selector import build_selector
+from ..types import OnErrorAction, OnErrorHandler, on_error_raise, PatchType
+
+
+ALL_NS = '*'
+
+
+def transform_exception(e: httpx.HTTPError):
+    if isinstance(e, httpx.HTTPStatusError) and e.response.headers['Content-Type'] == 'application/json':
+        return ApiError(request=e.request, response=e.response)
+    return e
+
+
+METHOD_MAPPING = {
+    'delete': 'DELETE',
+    'deletecollection': 'DELETE',
+    'get': 'GET',
+    'global_list': 'GET',
+    'global_watch': 'GET',
+    'list': 'GET',
+    'patch': 'PATCH',
+    'post': 'POST',
+    'put': 'PUT',
+    'watch': 'GET'
+}
+
+@dataclass
+class BasicRequest:
+    method: str
+    url: str
+    response_type: Any
+    params: Dict[str, str] = dataclasses.field(default_factory=dict)
+    data: Any = None
+    headers: Dict[str, str] = None
+
+
+class WatchDriver:
+    def __init__(self, br: BasicRequest, build_request, lazy):
+        self._version = br.params.get('resourceVersion')
+        self._convert = br.response_type.from_dict
+        self._br = br
+        self._build_request = build_request
+        self._lazy = lazy
+
+    def get_request(self):
+        br = self._br
+        if self._version is not None:
+            br.params['resourceVersion'] = self._version
+        return self._build_request(br.method, br.url, params=br.params)
+
+    def process_one_line(self, line):
+        line = json.loads(line)
+        tp = line['type']
+        obj = line['object']
+        self._version = obj['metadata']['resourceVersion']
+        return tp, self._convert(obj, lazy=self._lazy)
+
+
+class GenericClient:
+    AdapterClient = staticmethod(client_adapter.Client)
+
+    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
+        if timeout is None:
+            timeout = httpx.Timeout(10)
+        self._timeout = timeout
+        self._watch_timeout = httpx.Timeout(timeout)
+        self._watch_timeout.read = None
+        self._lazy = lazy
+        if config is None:
+            config = KubeConfig.from_env().get()
+        elif isinstance(config, KubeConfig):
+            config = config.get()
+        self._client = self.AdapterClient(config, timeout)
+        self.namespace = namespace if namespace else config.namespace
+
+    def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
+                        labels=None, fields=None,
+                        watch: bool = False, patch_type: PatchType = PatchType.STRATEGIC, params: dict = None) -> BasicRequest:
+        if params is not None:
+            params = {k: v for k, v in params.items() if v is not None}
+        else:
+            params = {}
+        data = None
+        if res is None:
+            if obj is None:
+                raise ValueError("At least a resource or an instance of a resource need to be provided")
+            res = obj.__class__
+
+        namespaced = issubclass(res, (r.NamespacedResource, r.NamespacedSubResource))
+
+        if namespace == ALL_NS:
+            if not issubclass(res, r.NamespacedResourceG):
+                raise ValueError(f"Class {res} doesn't support global {method}")
+            if method not in ('list', 'watch'):
+                raise ValueError("Only methods 'list' and 'watch' can be called for all namespaces")
+            real_method = "global_watch" if watch else "global_" + method
+        else:
+            real_method = "watch" if watch else method
+
+        api_info = r.api_info(res)
+        if real_method not in api_info.verbs:
+            if watch:
+                raise ValueError(f"Resource '{res.__name__}' is not watchable")
+            else:
+                raise ValueError(f"method '{method}' not supported by resource '{res.__name__}'")
+
+        if watch:
+            params['watch'] = "true"
+
+        if api_info.parent is None:
+            base = api_info.resource
+        else:
+            base = api_info.parent
+
+        if base.group == '':
+            path = ["api", base.version]
+        else:
+            path = ["apis", base.group, base.version]
+
+        if namespaced and namespace != ALL_NS:
+            if namespace is None and method in ('post', 'put'):
+                namespace = obj.metadata.namespace
+            if namespace is None:
+                namespace = self.namespace
+            if method in ('post', 'put'):
+                # we ensure we send here the same namespace defined in the url
+                obj.metadata.namespace = namespace
+            path.extend(["namespaces", namespace])
+
+        if method in ('post', 'put', 'patch'):
+            if obj is None:
+                raise ValueError("obj is required for post, put or patch")
+
+            if method == 'patch' and not isinstance(obj, r.Resource):
+                data = obj
+            else:
+                data = obj.to_dict()
+
+        path.append(api_info.plural)
+        if method in ('delete', 'get', 'patch', 'put') or api_info.action:
+            if name is None and method == 'put':
+                name = obj.metadata.name
+            if name is None:
+                raise ValueError("resource name not defined")
+            path.append(name)
+
+        headers = None
+        if method == 'patch':
+            headers = {'Content-Type': patch_type.value}
+
+        if api_info.action:
+            path.append(api_info.action)
+
+        http_method = METHOD_MAPPING[method]
+        if http_method == 'DELETE':
+            res = None
+
+        if labels is not None:
+            params['labelSelector'] = build_selector(labels)
+
+        if fields is not None:
+            params['fieldSelector'] = build_selector(fields, for_fields=True)
+
+        return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res, data=data, headers=headers)
+
+    def handle_response(self, method, resp, br):
+        try:
+            resp.raise_for_status()
+        except httpx.HTTPError as e:
+            raise transform_exception(e)
+        res = br.response_type
+        if res is None:
+            # TODO: delete/deletecollection actions normally return a Status object, we may want to return it as well
+            return
+        data = resp.json()
+        if method == 'list':
+            if 'metadata' in data and 'continue' in data['metadata']:
+                cont = True
+                br.params['continue'] = data['metadata']['continue']
+            else:
+                cont = False
+            return cont, (res.from_dict(obj, lazy=self._lazy) for obj in data['items'])
+        else:
+            if res is not None:
+                return res.from_dict(data, lazy=self._lazy)
+
+
+class GenericSyncClient(GenericClient):
+    def watch(self, br: BasicRequest, on_error: OnErrorHandler = on_error_raise):
+        wd = WatchDriver(br, self._client.build_request, self._lazy)
+        err_count = 0
+        while True:
+            req = wd.get_request()
+            resp = self._client.send(req, stream=True, timeout=self._watch_timeout)
+            try:
+                resp.raise_for_status()
+                err_count = 0
+                for line in resp.iter_lines():
+                    yield wd.process_one_line(line)
+            except Exception as e:
+                err_count += 1
+                handle_error = on_error(e, err_count)
+                if handle_error.action is OnErrorAction.RAISE:
+                    raise
+                if handle_error.action is OnErrorAction.STOP:
+                    break
+                if handle_error.sleep > 0:
+                    time.sleep(handle_error.sleep)
+                continue
+
+    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: PatchType = PatchType.STRATEGIC) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, patch_type)
+        req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
+        resp = self._client.send(req)
+        return self.handle_response(method, resp, br)
+
+    def list(self, br: BasicRequest) -> Any:
+        cont = True
+        while cont:
+            req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
+            resp = self._client.send(req)
+            cont, chunk = self.handle_response('list', resp, br)
+            yield from chunk
+
+
+class GenericAsyncClient(GenericClient):
+    AdapterClient = staticmethod(client_adapter.AsyncClient)
+
+    async def watch(self, br: BasicRequest, on_error: OnErrorHandler = on_error_raise):
+        wd = WatchDriver(br, self._client.build_request, self._lazy)
+        err_count = 0
+        while True:
+            req = wd.get_request()
+            resp = await self._client.send(req, stream=True, timeout=self._watch_timeout)
+            try:
+                resp.raise_for_status()
+                err_count = 0
+                async for line in resp.aiter_lines():
+                    yield wd.process_one_line(line)
+            except Exception as e:
+                err_count += 1
+                handle_error = on_error(e, err_count)
+                if handle_error.action is OnErrorAction.RAISE:
+                    raise
+                if handle_error.action is OnErrorAction.STOP:
+                    break
+                if handle_error.sleep > 0:
+                    await asyncio.sleep(handle_error.sleep)
+                continue
+
+    async def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: PatchType = PatchType.STRATEGIC) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, patch_type)
+        req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
+        resp = await self._client.send(req)
+        return self.handle_response(method, resp, br)
+
+    async def list(self, br: BasicRequest) -> Any:
+        cont = True
+        while cont:
+            req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
+            resp = await self._client.send(req)
+            cont, chunk = self.handle_response('list', resp, br)
+            for item in chunk:
+                yield item
+
+    async def close(self):
+        await self._client.aclose()
