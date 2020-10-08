@@ -1,0 +1,9 @@
+# BOTLIB - framework to program bots
+#
+#
+
+classes = {'Bus': ['ol.bus.Bus'], 'Console': ['ol.csl.Console'], 'Event': ['bot.irc.Event'], 'Handler': ['ol.hdl.Handler'], 'Kernel': ['ol.krn.Kernel'], 'Loader': ['ol.ldr.Loader'], 'Getter': ['ol.prs.Getter'], 'Option': ['ol.prs.Option'], 'Setter': ['ol.prs.Setter'], 'Skip': ['ol.prs.Skip'], 'Timed': ['ol.prs.Timed'], 'Token': ['ol.prs.Token'], 'Repeater': ['ol.tms.Repeater'], 'Timer': ['ol.tms.Timer'], 'Log': ['bmod.ent.Log'], 'Todo': ['bmod.ent.Todo'], 'Cfg': ['bot.irc.Cfg'], 'Feed': ['bmod.rss.Feed'], 'Fetcher': ['bmod.rss.Fetcher'], 'Rss': ['bmod.rss.Rss'], 'Seen': ['bmod.rss.Seen'], 'UDP': ['bmod.udp.UDP'], 'DCC': ['bot.irc.DCC'], 'IRC': ['bot.irc.IRC'], 'User': ['bot.irc.User'], 'Users': ['bot.irc.Users']}
+
+mods = {'cfg': 'bmod.cfg', 'icfg': 'bmod.cfg', 'cmd': 'bmod.cmd', 'mds': 'bmod.cmd', 'tsk': 'bmod.cmd', 'upt': 'bmod.cmd', 'ver': 'bmod.cmd', 'edt': 'bmod.edt', 'dne': 'bmod.ent', 'log': 'bmod.ent', 'tdo': 'bmod.ent', 'fnd': 'bmod.fnd', 'dpl': 'bmod.rss', 'fed': 'bmod.rss', 'ftc': 'bmod.rss', 'rm': 'bmod.rss', 'rss': 'bmod.rss', 'sts': 'bmod.sts'}
+
+names = {'bus': ['ol.bus.Bus'], 'console': ['ol.csl.Console'], 'event': ['bot.irc.Event'], 'handler': ['ol.hdl.Handler'], 'kernel': ['ol.krn.Kernel'], 'loader': ['ol.ldr.Loader'], 'getter': ['ol.prs.Getter'], 'option': ['ol.prs.Option'], 'setter': ['ol.prs.Setter'], 'skip': ['ol.prs.Skip'], 'timed': ['ol.prs.Timed'], 'token': ['ol.prs.Token'], 'repeater': ['ol.tms.Repeater'], 'timer': ['ol.tms.Timer'], 'log': ['bmod.ent.Log'], 'todo': ['bmod.ent.Todo'], 'cfg': ['bot.irc.Cfg'], 'feed': ['bmod.rss.Feed'], 'fetcher': ['bmod.rss.Fetcher'], 'rss': ['bmod.rss.Rss'], 'seen': ['bmod.rss.Seen'], 'udp': ['bmod.udp.UDP'], 'dcc': ['bot.irc.DCC'], 'irc': ['bot.irc.IRC'], 'user': ['bot.irc.User'], 'users': ['bot.irc.Users']}
