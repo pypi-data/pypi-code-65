@@ -1,0 +1,2 @@
+class SymError(Exception):
+    pass
