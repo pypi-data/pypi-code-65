@@ -1,0 +1,32 @@
+# Import all policies at one place to be able to to resolve them via a common module
+# path. Don't do this in `__init__.py` to avoid importing them without need.
+
+# noinspection PyUnresolvedReferences
+from convo.core.policies.ted_policy import TEDPolicy
+
+# noinspection PyUnresolvedReferences
+from convo.core.policies.embedding_policy import EmbeddingPolicy
+
+# noinspection PyUnresolvedReferences
+from convo.core.policies.fallback import FallbackPolicy
+
+# noinspection PyUnresolvedReferences
+from convo.core.policies.keras_policy import KerasPolicy
+
+# noinspection PyUnresolvedReferences
+from convo.core.policies.memoization import MemoizationPolicy, AugmentedMemoizationPolicy
+
+# noinspection PyUnresolvedReferences
+from convo.core.policies.sklearn_policy import SklearnPolicy
+
+# noinspection PyUnresolvedReferences
+from convo.core.policies.form_policy import FormPolicy
+
+# noinspection PyUnresolvedReferences
+from convo.core.policies.two_stage_fallback import TwoStageFallbackPolicy
+
+# noinspection PyUnresolvedReferences
+from convo.core.policies.mapping_policy import MappingPolicy
+
+# noinspection PyUnresolvedReferences
+from convo.core.policies.embedding_policy import EmbeddingPolicy
