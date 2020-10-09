@@ -1,0 +1,12 @@
+PACKAGE_NAME = "smls"
+PACKAGE_ENTRY_POINT = "smls"
+ARCHIVE_FOR_SENDING_NAME = "seamless_package.tar.gz"
+ARCHIVE_SIZE_LIMIT = 10 * 1024 * 1024  # 10 MB
+SEAMLESS_HOST = "https://app.seamlesscloud.io"
+# SEAMLESS_HOST = "http://localhost:5000"
+SEAMLESS_SERVICE_URL = f"{SEAMLESS_HOST}/api/v1"
+SEAMLESS_SERVICE_PUBLISH_ROUTE = "/publish"
+SEAMLESS_SERVICE_JOBS_ROUTE = "/jobs"
+EXCLUDE_FOLDERS_AND_FILES = ['.git', '__pycache__', '.pytest_cache']
+DEFAULT_ENTRYPOINT_FILENAME = 'function.py'
+DEFAULT_REQUIREMENTS_FILE = 'requirements.txt'
