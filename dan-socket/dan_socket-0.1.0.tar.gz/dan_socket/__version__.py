@@ -1,0 +1,8 @@
+__title__ = 'dan_socket'
+__description__ = 'Event-driver socket client and server'
+__url__ = 'https://github.com/fredericowu/dan_socket'
+__version__ = '0.1.0'
+__author__ = 'Frederico Dias Wu'
+__author_email__ = 'fredericowu@gmail.com'
+__license__ = 'Apache 2.0'
+__copyright__ = 'Copyright 2020 Frederico Dias Wu'
