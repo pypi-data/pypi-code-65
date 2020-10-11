@@ -1,0 +1,6 @@
+__package_name__ = "texbox"
+__version__ = "0.2.1"
+__author__ = "João Palmeiro"
+__author_email__ = "jm.palmeiro@campus.fct.unl.pt"
+__description__ = "An opinionated Python CLI to create, organize, and prettify specific files of a LaTeX project."
+__url__ = "https://github.com/joaopalmeiro/texbox"
