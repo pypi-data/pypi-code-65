@@ -1,0 +1,60 @@
+# -*- coding: latin-1 -*-
+from morphonet.plugins import MorphoPlugin
+
+#Add an new object based on a new seed 
+class createSeeds(MorphoPlugin):
+    def __init__(self): #PLUGIN DEFINITION 
+        MorphoPlugin.__init__(self) 
+        self.set_Name("CreateSeeds")
+        self.add_InputField("gaussian_sigma",default=8)
+        self.add_Dropdown("MinOrMax",["min","max"])
+        self.add_InputField("h_value",default=2)
+        self.set_Parent("Create new objects")
+
+    def process(self,t,dataset,objects): #PLUGIN EXECUTION
+        if not self.start(t,dataset,objects):
+            return None
+  
+        s_sigma=int(self.get_InputField("gaussian_sigma"))
+        MinOrMax=self.get_Dropdown("MinOrMax")
+        h_value=float(self.get_InputField("h_value"))
+       
+        from skimage.morphology import extrema
+        from skimage.filters import gaussian 
+        from skimage.measure import label
+        import numpy as np
+
+        data=dataset.get_seg(t)
+        center=dataset.getCenter(data)
+        rawdata=dataset.get_raw(t)
+
+        #Smoothing
+        if s_sigma > 0.0:
+            print(" --> Perform gaussian with sigma="+str(s_sigma))
+            seed_preimage=gaussian(rawdata, sigma=s_sigma,preserve_range=True)
+        else:
+            seed_preimage = rawdata
+
+        #Fin Extrema
+        print(" --> Perform  h "+MinOrMax+ " whith h = "+str(h_value))
+        if MinOrMax=="min":
+            local=extrema.h_minima(seed_preimage,h_value)
+        else: 
+            local=extrema.h_maxima(seed_preimage,h_value) 
+
+        print(" --> Perform  labelisation")
+        label_maxima,nbElts = label(local,return_num=True) 
+        nbc=0
+        for elt in range(1,nbElts+1):
+            coord=np.where(label_maxima==elt)
+            v=dataset.background
+            if data is not None:
+                v=data[coord[0][0],coord[1][0],coord[2][0]]
+            if v==dataset.background:
+                dataset.addSeed(np.int32([coord[0][0]-center[0],coord[1][0]-center[1],coord[2][0]-center[2]]))
+                print(" ----> Create a seed at "+str(coord[0][0])+","+str(coord[1][0])+","+str(coord[2][0]))
+                nbc+=1
+        print(" --> Found "+str(nbc)+" peaks with "+MinOrMax+" extrema")
+
+        self.restart()
+
