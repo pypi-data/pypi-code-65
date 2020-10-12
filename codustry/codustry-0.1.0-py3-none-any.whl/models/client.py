@@ -1,0 +1,2 @@
+class Clients(BaseModel):
+    pass
