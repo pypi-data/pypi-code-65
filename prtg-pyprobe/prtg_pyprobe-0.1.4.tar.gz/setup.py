@@ -1,0 +1,34 @@
+from setuptools import setup
+
+setup(
+    name="prtg_pyprobe",
+    description="Python Probe for PRTG Network Monitor",
+    package_data={"": ["*.service"]},
+    install_requires=[
+        "click",
+        "requests",
+        "PyInquirer",
+        "pythonping",
+        "pyyaml",
+        "certifi",
+        "cerberus",
+        "psutil",
+        "aiodns",
+        "cchardet",
+        "dnspython",
+        "pysnmp",
+        "aioping",
+        "httpx",
+        "python-daemon",
+    ],
+    tests_require=[
+        "pytest",
+        "pytest-cov",
+        "pytest-asyncio",
+        "pytest-mock",
+        "pytest-subprocess",
+        "black",
+        "pyfakefs",
+        "testfixtures",
+    ],
+)
