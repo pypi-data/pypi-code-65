@@ -1,0 +1,106 @@
+#!/usr/bin/env python
+
+"""
+Samba server shares
+"""
+
+#$ smbclient -L DUOLNX -N
+#Anonymous login successful
+#Domain=[MDKGROUP] OS=[Unix] Server=[Samba 3.0.28a]
+#
+#        Sharename       Type      Comment
+#        ---------       ----      -------
+#        print$          Disk
+#        pdf-gen         Printer   PDF Generator (only valid users)
+#        homes           Disk      Home Directories
+#        IncomingCopied  Disk      IncomingCopied
+#        IncomingToCopy  Disk      IncomingToCopy
+#        Samsung         Disk      SamsungDisk
+#        IPC$            IPC       IPC Service (Samba Server 3.0.28a DuoLinux)
+#Anonymous login successful
+#Domain=[MDKGROUP] OS=[Unix] Server=[Samba 3.0.28a]
+#
+#        Server               Comment
+#        ---------            -------
+#        DUOLNX               Samba Server 3.0.28a DuoLinux
+#
+#        Workgroup            Master
+#        ---------            -------
+#        HOME                 BTHUB5
+#        MDKGROUP             DUOLNX
+
+
+import re
+import os
+import sys
+import lib_util
+import lib_common
+from lib_properties import pc
+
+def Main():
+	cgiEnv = lib_common.CgiEnv()
+	smbServer = cgiEnv.GetId()
+
+	if lib_util.isPlatformWindows:
+		lib_common.ErrorMessageHtml("smbclient not available on Windows")
+
+	grph = cgiEnv.GetGraph()
+
+	nodeSmbShr = lib_common.gUriGen.SmbServerUri( smbServer )
+
+	smbclient_cmd = [ "smbclient", "-L", smbServer, "-N" ]
+
+	# This print is temporary until we know how to display smb-shared files.
+	# print("Content-Type: text/html")
+	# print("")
+	# print("Command="+str(smbclient_cmd))
+	# print("<br>")
+
+	smbclient_pipe = lib_common.SubProcPOpen(smbclient_cmd)
+
+	( smbclient_last_output, smbclient_err ) = smbclient_pipe.communicate()
+
+	lines = smbclient_last_output.split('\n')
+
+	modeSharedList = False
+	for lin in lines:
+		# print( "l="+lin+"<br>" )
+		# Normally this is only the first line
+		# session setup failed: NT_STATUS_LOGON_FAILURE
+		mtch_net = re.match(r"^.*(NT_STATUS_.*)", lin)
+		if mtch_net:
+			# print("OK<br>")
+			lib_common.ErrorMessageHtml("Smb failure: " + mtch_net.group(1) + " to smb share:" + smbServer)
+
+		if re.match(r"^\sServer\s+Comment", lin):
+			modeSharedList = False
+			continue
+
+		if re.match(r"^\sWorkgroup\s+Master", lin):
+			modeSharedList = False
+			continue
+
+		if re.match(r"^\sSharename\s+Type\s+Comment", lin):
+			modeSharedList = True
+			continue
+
+		if re.match (r"^\s*----+ +---+ +", lin ):
+			continue
+
+		# print("m="+str(modeSharedList))
+		# print("l="+lin)
+		if modeSharedList:
+			# The type can be "Disk", "Printer" or "IPC".
+			mtch_share = re.match(r"^\s+([^\s]+)\s+Disk\s+(.*)$", lin)
+			if mtch_share:
+				shareName = mtch_share.group(1)
+
+				shareNode = lib_common.gUriGen.SmbShareUri( "//" + smbServer + "/" + shareName )
+
+				grph.add( ( nodeSmbShr, pc.property_smbshare, shareNode ) )
+
+	cgiEnv.OutCgiRdf()
+
+if __name__ == '__main__':
+	Main()
+
