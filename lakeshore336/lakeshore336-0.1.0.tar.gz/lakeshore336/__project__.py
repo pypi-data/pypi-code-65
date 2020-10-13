@@ -1,0 +1,13 @@
+__author__ = 'Carlos Vigo <carlosv@phys.ethz.ch>'
+__email__ = '<carlosv@phys.ethz.ch>'
+__short_author__ = 'Carlos Vigo'
+__copyright__ = '2020, Carlos Vigo'
+__module_name__ = 'lakeshore336.py'
+__package_name__ = 'lakeshore336'
+__project_name__ = 'Lakeshore 336 Temperature Controller'
+__url__ = 'https://gitlab.ethz.ch/exotic-matter/cw-beam/lakeshore336'
+__documentation__ = 'https://lakeshore336.readthedocs.io'
+__version__ = '0.1.0'
+__short_version__ = '0.1.0'
+__description__ = 'Readout, logging and control software for the Lakeshore 336 Temperature Controller'
+
