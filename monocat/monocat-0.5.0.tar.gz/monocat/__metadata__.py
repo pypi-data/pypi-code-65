@@ -1,0 +1,7 @@
+NAME = 'monocat'
+VERSION = '0.5.0'
+AUTHOR = 'Jeffrey Wilges'
+AUTHOR_EMAIL = 'jeffrey@wilges.com'
+DESCRIPTION = 'monocat is a command line utility for managing GitHub releases'
+URL = 'https://github.com/jwilges/monocat'
+LICENSE = 'BSD'
