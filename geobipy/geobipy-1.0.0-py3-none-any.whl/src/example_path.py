@@ -1,0 +1,1 @@
+example_path = "/Users/nfoks/Projects/bMinsley/MTB/inversion_results/2020_03_11_FD/"
