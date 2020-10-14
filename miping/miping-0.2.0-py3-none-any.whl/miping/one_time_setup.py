@@ -1,0 +1,684 @@
+# One time setup, to run miping properly
+import sys
+import getopt
+import os
+import requests
+import zipfile
+import getpass
+
+from subprocess import check_call
+from shutil import copyfile, copyfileobj
+# from whichcraft import which
+from shutil import which
+
+
+def main(
+    setup_webserver,
+    domain
+):
+    """
+    Starting function to call after parameters were checked.
+
+    Parameters
+    ----------
+    setup_webserver : boolean, default=None, required
+        If True, webserver will be set up.
+    domain : string, default=None
+        Domain to set the server up for. Usually localhost.
+    """
+
+    webserver = False
+
+    print("Setting up miping")
+    webserver = determine_if_webserver(
+        setup_webserver=setup_webserver,
+        domain=domain
+    )
+
+    # current working dir
+    path = os.getcwd()
+    # create data, glove dirs
+    makeDir(path, '/data')
+    makeDir((path + '/data'), '/glove')
+    # log files
+    makeDir('/var/log', '/miping')
+
+    # download glove
+    downloadGloVe(path + '/data/glove/', 'glove.db')
+
+    # setup webserver if specified
+    if webserver is True:
+        print("Setting up webserver")
+        mipingDir = os.path.dirname(os.path.abspath(__file__))
+        workingDir = os.getcwd()
+        # make sure nginx is installed
+        print("Making sure nginx webserver is installed")
+        if is_tool('nginx') is True:
+            print("nginx is already installed")
+        else:
+            print("Installing nginx via apt-get")
+            try:
+                check_call(
+                    ['apt-get', 'install', '-y', 'nginx']
+                )
+            except Exception as e:
+                print(e)
+
+        try:
+            # cp to data and modify root in config file
+            print("Copy and modify nginx")
+            # .txt is necessary so files get properly copied
+            src = (
+                mipingDir +
+                '/webapp/webfiles/sites-available/' +
+                domain +
+                '.txt'
+            )
+            dest = workingDir + '/data/' + domain + ".txt"
+
+            exists = os.path.isfile(dest)
+            if not exists:
+                copyfile(
+                    src,
+                    dest
+                )
+                # change permissions as open as possible
+                os.chmod(dest, 0o0777)
+            else:
+                print("file exists")
+
+            modify_nginx_conf(
+                confPath=(workingDir + '/data/' + domain + ".txt"),
+                wwwRoot=(mipingDir + '/webapp/webfiles/www')
+            )
+        except Exception as e:
+            print(e)
+
+        try:
+            print("Copy nginx sites-available")
+            src = os.path.realpath(workingDir + '/data/' + domain + ".txt")
+            trg = (
+                os.path.realpath(
+                    '/etc/nginx/sites-available/' + domain + ".txt"
+                )
+            )
+
+            # only copy if file not already exists
+            copyfile(src, trg)
+            # remove .txt ending
+            os.rename(
+                trg,
+                '/etc/nginx/sites-available/' + domain
+            )
+
+        except Exception as e:
+            print(e)
+            print("Try to run script as root")
+
+        try:
+            print("Copy nginx sites-enabled")
+            src = ('/etc/nginx/sites-available/' + domain)
+            dst = ('/etc/nginx/sites-enabled/' + domain)
+            if not os.path.exists(dst):
+                # only create symlink if not already exists
+                os.symlink(src, dst)
+            else:
+                print("Exists already")
+        except Exception as e:
+            print(e)
+
+        prepare_supervisor(
+            mipingDir=mipingDir,
+            workingDir=workingDir
+        )
+
+        # cp start_webserver and modify
+        prepare_bash_scripts(
+            mipingDir=mipingDir,
+            workingDir=workingDir
+        )
+
+        # prepare files for ssl
+        prepare_ssl(workingDir)
+
+        # copy .env
+        exists = os.path.isfile(workingDir + '/.env')
+        if not exists:
+            modify_env(
+                mipingDir=mipingDir,
+                workingDir=workingDir,
+                glove_path=(workingDir + '/data/glove/' + 'glove.db')
+            )
+            print("Please fill .env with keys and config")
+
+
+def modify_env(
+    mipingDir,
+    workingDir,
+    glove_path,
+):
+    """
+    Modify the .env file for specific environment to change glove path.
+
+    Parameters
+    ----------
+    mipingDir : string, default=None, required
+        Directory path to miping module.
+    workingDir : string, default=None, required
+        Current working directory.
+    glove_path : string, default=None, required
+        Path to glove file.
+    """
+    try:
+        # push glove file data to .env
+        env_path = workingDir + '/.env'
+        # copy file
+        copyfile(
+            mipingDir + '/.env.example',
+            env_path
+        )
+        print("Modify .env")
+        # Read in the file
+        with open(env_path, 'r') as file:
+            filedata = file.read()
+        print("Glove path: " + str(glove_path))
+        # Replace the target string
+        # user name
+        filedata = filedata.replace(
+            'glove_file_path=data/glove/glove.db',
+            'glove_file_path=' + str(glove_path)
+        )
+
+        # Write the file out again
+        with open(env_path, 'w') as file:
+            file.write(filedata)
+    except Exception as e:
+        print(e)
+
+    return
+
+
+def determine_if_webserver(
+    setup_webserver,
+    domain
+):
+    """
+    Only setup webserver if domain is among the known domains:
+    "miping" or "localhost".
+
+    Parameters
+    ----------
+    setup_webserver : boolean, default=None, required
+        Flag if webserver should setup.
+    domain : string, default=None, required
+        Domain to setup webserver for.
+
+    Returns
+    -------
+    webserver : boolean
+        Flag that decides if webserver is setup or not.
+    """
+    if setup_webserver == 'True' or setup_webserver is True:
+        print('Will setup webserver')
+        if domain in ("miping", "localhost"):
+            # domain is in preconfigured files
+            print("Domain will be: " + str(domain))
+            webserver = True
+        else:
+            # check if config file exists in miping for domain
+            path = os.path.dirname(os.path.abspath(__file__))
+            fullPath = (
+                path + '/webapp/webfiles/sites-available/' + domain + ".txt"
+            )
+            print(fullPath)
+            exists = os.path.isfile(fullPath)
+            if exists is True:
+                print("Domain will be: " + str(domain))
+                webserver = True
+            else:
+                print("No config file for domain " + str(domain))
+    else:
+        print('Will not setup webserver')
+
+    return webserver
+
+
+def prepare_supervisor(
+    mipingDir,
+    workingDir
+):
+    """
+    Copy and modify supervisor config according to
+    current system.
+
+    Parameters
+    ----------
+    mipingDir : string, default=None, required
+        Directory path to miping module.
+    workingDir : string, default=None, required
+        Current working directory.
+    """
+    try:
+        # cp to data and modify supervisor config
+        print("Copy and modify supervisor config")
+        dest = workingDir + '/data/miping-gunicorn.conf'
+        exists = os.path.isfile(dest)
+        if not exists:
+            # file does not exist
+            copyfile(
+                mipingDir + '/webapp/webfiles/miping-gunicorn.conf',
+                dest
+            )
+            user = getpass.getuser()
+            gunicornPath = which('gunicorn')
+            if gunicornPath is None or gunicornPath == 'None':
+                print(
+                    "Please make sure gunicorn is installed. " +
+                    "Try to NOT run as root."
+                )
+            else:
+                modify_supervisor_conf(
+                    confPath=(workingDir + '/data/miping-gunicorn.conf'),
+                    currentDir=workingDir,
+                    user=user,
+                    gunicornPath=gunicornPath
+                )
+        else:
+            print("file already exists")
+
+    except Exception as e:
+        print(e)
+
+    return
+
+
+def prepare_bash_scripts(
+    mipingDir,
+    workingDir
+):
+    """
+    Copy and modify bash scripts for start and stop webserver according to
+    current system.
+
+    Parameters
+    ----------
+    mipingDir : string, default=None, required
+        Directory path to miping module.
+    workingDir : string, default=None, required
+        Current working directory.
+    """
+    try:
+        existsStart = os.path.isfile(workingDir + '/data/start_webserver.sh')
+        existsStop = os.path.isfile(workingDir + '/data/stop_webserver.sh')
+        print("Copy and modify start_webserver.sh")
+        if existsStart is False or existsStop is False:
+            # one file is at least missing
+            if which('supervisord') is None or which('supervisord') == "None":
+                print("Try to run not as root. supervisord not found.")
+            else:
+                copyfile(
+                            mipingDir + '/webapp/webfiles/start_webserver.sh',
+                            workingDir + '/data/start_webserver.sh'
+                )
+                modify_web_sh(
+                    confPath=(workingDir + '/data/start_webserver.sh'),
+                    pythonBinaryDir=which('supervisord')
+                )
+
+                # cp stop_webserver and modify
+                print("Copy and modify stop_webserver.sh")
+                copyfile(
+                            mipingDir + '/webapp/webfiles/stop_webserver.sh',
+                            workingDir + '/data/stop_webserver.sh'
+                )
+        else:
+            print("Files already exist")
+    except Exception as e:
+        print(e)
+
+    return
+
+
+def prepare_ssl(
+    workingDir
+):
+    """
+    Setup ssl certificates for current system.
+    This step needs probably root permissions.
+
+    Parameters
+    ----------
+    workingDir : string, default=None, required
+        Current working directory.
+    """
+    try:
+        # check and create ssl keys
+        # check if certificate exists
+        existsCert = os.path.isfile('/etc/ssl/certs/cert.pem')
+        existsKey = os.path.isfile('/etc/ssl/private/key.pem')
+        if existsCert is False or existsKey is False:
+            CERT_FILE = workingDir + "cert.pem"
+            KEY_FILE = workingDir + "key.pem"
+            # check if local keys exist
+            existsCert = os.path.isfile(workingDir + "cert.pem")
+            existsKey = os.path.isfile(workingDir + "key.pem")
+            if existsCert is False or existsKey is False:
+                # one of both does not exist
+                print("Creating SSL key and certificate")
+                # create files in local directory
+                # and move later
+                create_self_signed_cert(
+                    CERT_FILE=CERT_FILE,
+                    KEY_FILE=KEY_FILE
+                )
+
+            # try to move, only possible if sufficient permissions
+            destCert = "/etc/ssl/certs/cert.pem"
+            destKey = "/etc/ssl/private/key.pem"
+            try:
+                print("Copying certificate to /etc/ssl/certs")
+                copyfile(CERT_FILE, destCert)
+            except Exception as e:
+                print(e)
+                print("Try with root")
+
+            try:
+                print("Copying key to /etc/ssl/private")
+                copyfile(KEY_FILE, destKey)
+            except Exception as e:
+                print(e)
+                print("Try with root")
+
+        else:
+            print("SSL key and certificate exist")
+    except Exception as e:
+        print(e)
+
+    return
+
+
+def create_self_signed_cert(
+    CERT_FILE,
+    KEY_FILE,
+):
+    """
+    Create self signed certificates for current system.
+
+    Parameters
+    ----------
+    CERT_FILE : string, default=None, required
+        Target path for cert file.
+    KEY_FILE : string, default=None, required
+        Target path for key file.
+    """
+    from OpenSSL import crypto
+    from socket import gethostname
+
+    # create a key pair
+    k = crypto.PKey()
+    k.generate_key(crypto.TYPE_RSA, 4096)
+
+    # create a self-signed cert
+    cert = crypto.X509()
+    cert.get_subject().C = "DE"
+    cert.get_subject().ST = "Braunschweig"
+    cert.get_subject().L = "Braunschweig"
+    cert.get_subject().OU = "Dummy Company Ltd"
+    cert.get_subject().CN = gethostname()
+    cert.set_serial_number(1000)
+    cert.gmtime_adj_notBefore(0)
+    cert.gmtime_adj_notAfter(10*365*24*60*60)
+    cert.set_issuer(cert.get_subject())
+    cert.set_pubkey(k)
+    cert.sign(k, 'sha512')
+
+    with open(CERT_FILE, "wt") as f:
+        f.write(
+            crypto.dump_certificate(crypto.FILETYPE_PEM, cert).decode("utf-8")
+        )
+    with open(KEY_FILE, "wt") as f:
+        f.write(
+            crypto.dump_privatekey(crypto.FILETYPE_PEM, k).decode("utf-8")
+        )
+    return
+
+
+def modify_web_sh(
+    confPath,
+    pythonBinaryDir,
+):
+    """
+    Modify start webserver bash script for current system.
+
+    Parameters
+    ----------
+    confPath : string, default=None, required
+        Path of bash script to manipulate.
+    pythonBinaryDir : string, default=None, required
+        Path for binary of supervisord.
+    """
+    try:
+        print("Modify webserver.sh")
+        print("Supervisor binary " + str(pythonBinaryDir))
+        # Read in the file
+        with open(confPath, 'r') as file:
+            filedata = file.read()
+
+        # Replace the target string
+        # user name
+        filedata = filedata.replace(
+            'supervisorctl',
+            pythonBinaryDir
+        )
+
+        filedata = filedata.replace(
+            'supervisord',
+            pythonBinaryDir
+        )
+
+        # Write the file out again
+        with open(confPath, 'w') as file:
+            file.write(filedata)
+    except Exception as e:
+        print(e)
+
+    return
+
+
+def modify_nginx_conf(
+    confPath,
+    wwwRoot,
+):
+    """
+    Modify start webserver bash script for current system.
+
+    Parameters
+    ----------
+    confPath : string, default=None, required
+        Path of bash script to manipulate.
+    wwwRoot : string, default=None, required
+        Path for webfiles root.
+    """
+    try:
+        print("Modify nginx config")
+        # Read in the file
+        with open(confPath, 'r') as file:
+            filedata = file.read()
+
+        # Replace the target string
+        # user name
+        filedata = filedata.replace(
+            'root /miping/webapp/webfiles/www',
+            'root ' + str(wwwRoot)
+        )
+
+        # Write the file out again
+        with open(confPath, 'w') as file:
+            file.write(filedata)
+
+        # remove default server from nginx config sites enabled
+        print("Removing nginx default server from sites enabled")
+        try:
+            path = '/etc/nginx/sites-enabled/default'
+            exists = os.path.isfile(path)
+            if exists is True:
+                # remove if exists
+                os.remove(path)
+        except Exception as e:
+            print(e)
+    except Exception as e:
+        print(e)
+
+    return
+
+
+def modify_supervisor_conf(
+    confPath,
+    currentDir,
+    user,
+    gunicornPath
+):
+    """
+    Modify start supervisor config for current system.
+
+    Parameters
+    ----------
+    confPath : string, default=None, required
+        Path of supervisor config to manipulate.
+    currentDir : string, default=None, required
+        Working directory path.
+    user : string, default=None, required
+        Current active user.
+    gunicornPath : string, default=None, required
+        Path for gunicorn.
+    """
+    try:
+        print("Modify supervisor config")
+        # Read in the file
+        with open(confPath, 'r') as file:
+            filedata = file.read()
+
+        # Replace the target string
+        # user name
+        filedata = filedata.replace(
+            'user=root',
+            'user=' + str(user)
+        )
+        # directory
+        filedata = filedata.replace(
+            'directory=MiningPersonalityInGerman',
+            'directory=' + str(currentDir)
+        )
+        # gunicorn binary
+        filedata = filedata.replace(
+            'command=/bin/gunicorn',
+            'command=' + str(gunicornPath)
+        )
+
+        # Write the file out again
+        with open(confPath, 'w') as file:
+            file.write(filedata)
+
+    except Exception as e:
+        print(e)
+
+    return
+
+
+def is_tool(name):
+    """Check whether `name` is on PATH and marked as executable."""
+
+    return which(name) is not None
+
+
+def downloadGloVe(
+    path,
+    filename,
+    zip_file_url='https://miping-glove.s3.eu-central-1.amazonaws.com/glove.zip'
+):
+    """
+    Download glove ZIP file from miping server and extract.
+    Download only if file does not exist already.
+    This will take a while.
+
+    Parameters
+    ----------
+    path : string, default=None
+        Path to download glove file to.
+    filename : string, default=None
+        Filename to extract ZIP file to.
+    zip_file_url : string
+        Fill to download ZIP file from.
+    """
+    try:
+        # check if already exists
+        exists = os.path.isfile(path + filename)
+        if exists is True:
+            print("GloVe database file already exists")
+        else:
+            # download glove file
+            print("Downloading GloVe file, this takes a while")
+            with open('tempGlove.zip', 'wb') as f:
+                # write zip to file
+                with requests.get(zip_file_url, stream=True) as r:
+                    copyfileobj(r.raw, f)
+
+            with open('tempGlove.zip', 'rb') as f:
+                z = zipfile.ZipFile(f)
+                # unzip file
+                z.extractall(path)
+
+    except Exception as e:
+        print(e)
+        print("Important! Download GloVe file before starting server")
+
+
+def makeDir(
+    parent,
+    directory,
+):
+    """
+    Create directory in parent directory.
+    """
+    path = parent + directory
+    # check if already exists
+    exists = os.path.isdir(path)
+    if exists is False:
+        try:
+            os.mkdir(path)
+        except OSError:
+            print("Creation of the directory %s failed" % path)
+        else:
+            print("Successfully created the directory %s " % path)
+
+
+if __name__ == "__main__":
+    argv = sys.argv[1:]
+    try:
+        opts, args = getopt.getopt(
+            argv,
+            "hi:d:",
+            ["setup_webserver=", "domain="]
+        )
+    except getopt.GetoptError:
+        print(
+            'one_time_setup.py --setup_webserver <Boolean> ' +
+            '--domain localhost'
+        )
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print(
+                 'usage: sudo python3 miping/one_time_setup.py ' +
+                 '--setup_webserver True ' +
+                 '-d "localhost"'
+            )
+            sys.exit()
+        elif opt in ("-i", "--setup_webserver"):
+            setup_webserver = arg
+        elif opt in ("-d", "--domain"):
+            domain = arg
+    main(
+        setup_webserver=setup_webserver,
+        domain=domain
+    )
