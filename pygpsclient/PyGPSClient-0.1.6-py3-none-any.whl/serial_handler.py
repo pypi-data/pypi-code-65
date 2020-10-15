@@ -1,0 +1,253 @@
+'''
+SerialHandler class for PyGPSClient application
+
+This handles all the serial i/o , threaded read process and direction to
+the appropriate protocol handler
+
+Created on 16 Sep 2020
+
+@author: semuadmin
+'''
+
+from io import BufferedRWPair
+from threading import Thread
+
+from serial import Serial, SerialException, SerialTimeoutException
+import pyubx2.ubxtypes_core as ubt
+
+from .globals import CONNECTED, DISCONNECTED, SERIAL_TIMEOUT, \
+                                NMEA_PROTOCOL, MIXED_PROTOCOL, UBX_PROTOCOL, PARITIES
+from .strings import WAITUBXDATA, STOPDATA, NOTCONN, SEROPENERROR
+
+
+class SerialHandler():
+    '''
+    Serial handler class.
+    '''
+
+    def __init__(self, app):
+        '''
+        Constructor.
+        '''
+
+        self.__app = app  # Reference to main application class
+        self.__master = self.__app.get_master()  # Reference to root class (Tk)
+
+        self._serial_object = None
+        self._serial_buffer = None
+        self._serial_thread = None
+        self._connected = False
+        self._port = None
+        self._reading = False
+
+    def __del__(self):
+        '''
+        Destructor.
+        '''
+
+        if self._serial_thread is not None:
+            self._reading = False
+            self._serial_thread = None
+
+    def connect(self):
+        '''
+        Open serial connection.
+        '''
+
+        settings = self.__app.frm_settings.get_settings()
+
+        self._port = settings['port']
+        port_desc = settings['port_desc']
+        baudrate = settings['baudrate']
+        databits = settings['databits']
+        stopbits = settings['stopbits']
+        parity = PARITIES[settings['parity']]
+        xonxoff = settings['xonxoff']
+        rtscts = settings['rtscts']
+
+        try:
+            self._serial_object = Serial(self._port,
+                                         baudrate,
+                                         bytesize=databits,
+                                         stopbits=stopbits,
+                                         parity=parity,
+                                         xonxoff=xonxoff,
+                                         rtscts=rtscts,
+                                         timeout=SERIAL_TIMEOUT)
+            self._serial_buffer = BufferedRWPair(self._serial_object, self._serial_object)
+            self.__app.frm_banner.update_banner(status=True)
+            self.__app.set_connection(f"{self._port}:{port_desc} @ {str(baudrate)}", "green")
+            self.__app.frm_settings.set_controls(CONNECTED)
+            self._connected = True
+            self.start_read_thread()
+        except (SerialException, SerialTimeoutException) as err:
+            self._connected = False
+            self.__app.set_connection(f"{self._port}:{port_desc} @ {str(baudrate)}", "red")
+            self.__app.set_status(SEROPENERROR.format(err), "red")
+            self.__app.frm_banner.update_banner(status=False)
+            self.__app.frm_settings.set_controls(DISCONNECTED)
+
+    def disconnect(self):
+        '''
+        Close serial connection.
+        '''
+
+        if self._connected:
+            try:
+                self._reading = False
+                self._serial_object.close()
+                self.__app.frm_banner.update_banner(status=False)
+                self.__app.set_connection(NOTCONN, "red")
+                self.__app.set_status("", "blue")
+            except (SerialException, SerialTimeoutException):
+                pass
+
+        self._connected = False
+        self.__app.frm_settings.set_controls(self._connected)
+
+    @property
+    def port(self):
+        '''
+        Getter for port
+        '''
+
+        return self._port
+
+    @property
+    def connected(self):
+        '''
+        Getter for connection status
+        '''
+
+        return self._connected
+
+    @property
+    def serial(self):
+        '''
+        Getter for serial object
+        '''
+
+        return self._serial_object
+
+    @property
+    def buffer(self):
+        '''
+        Getter for serial buffer
+        '''
+
+        return self._serial_buffer
+
+    @property
+    def thread(self):
+        '''
+        Getter for serial thread
+        '''
+
+        return self._serial_thread
+
+    def serial_write(self, data: bytes):
+        '''
+        Write binary data to serial port.
+        '''
+
+        try:
+            self._serial_object.write(data)
+#             self._serial_buffer.write(data)
+        except (SerialException, SerialTimeoutException) as err:
+            print(f"Error writing to serial port {err}")
+
+    def start_read_thread(self):
+        '''
+        Start the serial reader thread.
+        '''
+
+        if self._connected:
+            self._reading = True
+            self.__app.set_status(WAITUBXDATA, "blue")
+            self.__app.frm_mapview.reset_map_refresh()
+            self._serial_object.reset_input_buffer()
+            self._serial_thread = Thread(target=self._read_thread, daemon=True)
+            self._serial_thread.start()
+
+    def stop_read_thread(self):
+        '''
+        Stop serial reader thread.
+        '''
+
+        if self._serial_thread is not None:
+            self._reading = False
+            self._serial_thread = None
+            self.__app.set_status(STOPDATA, "red")
+
+    def _read_thread(self):
+        '''
+        THREADED PROCESS
+        Reads binary data from serial port and generates virtual event to
+        trigger data parsing and widget updates.
+        '''
+
+        while self._reading and self._serial_object:
+            # print(f"Bytes in buffer: {self._serial_object.in_waiting}")
+            if self._serial_object.in_waiting:
+                self.__master.event_generate('<<ubx_read>>')
+
+    def on_read(self, event):  # pylint: disable=unused-argument
+        '''
+        Action on <<ubx_read>> event - read any data in the buffer.
+        '''
+
+        if self._reading and self._serial_object is not None:
+            self.__app.set_status("",)
+            self._parse_data(self._serial_buffer)
+
+    def _parse_data(self, ser: Serial) -> object:
+        '''
+        Read the binary data and direct to the appropriate
+        UBX and/or NMEA protocol handler, depending on which protocols
+        are filtered.
+        '''
+
+        parsing = True
+        raw_data = None
+        byte1 = ser.read(2)  # read first two bytes to determine protocol
+
+        while parsing:
+#             self.__app.update_idletasks()
+            filt = self.__app.frm_settings.get_settings()['protocol']
+            # if it's a UBX message (b'\b5\x62')
+            if byte1 == ubt.UBX_HDR and filt in (UBX_PROTOCOL, MIXED_PROTOCOL):
+#                 print(f"doing ubx {ser.peek()}")
+                byten = ser.read(4)
+                clsid = byten[0:1]
+                msgid = byten[1:2]
+                lenb = byten[2:4]
+                leni = int.from_bytes(lenb, 'little', signed=False)
+                byten = ser.read(leni + 2)
+                plb = byten[0:leni]
+                cksum = byten[leni:leni + 2]
+                raw_data = ubt.UBX_HDR + clsid + msgid + lenb + plb + cksum
+                self.__app.ubx_handler.process_data(raw_data)
+                parsing = False
+            # if it's an NMEA message ('$G' or '$P')
+            elif byte1 in (b'\x24\x47', b'\x24\x50') and filt in (NMEA_PROTOCOL, MIXED_PROTOCOL):
+#                 print(f"doing nmea {ser.peek()}")
+                try:
+                    raw_data = byte1 + ser.readline()
+                    self.__app.nmea_handler.process_data(raw_data.decode("utf-8"))
+                except UnicodeDecodeError:
+                    continue
+                parsing = False
+            # else drop it like it's hot
+            else:
+#                 print(f"dropping {ser.peek()}")
+                parsing = False
+
+    def flush(self):
+        '''
+        Flush input buffer
+        '''
+
+        if self._serial_buffer is not None:
+            self._serial_buffer.flush()
+        if self._serial_object is not None:
+            self._serial_object.flushInput()
