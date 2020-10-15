@@ -1,0 +1,1 @@
+default_stages = ('train', 'test', 'val')
